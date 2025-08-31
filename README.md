@@ -1,5 +1,6 @@
 <img width="839" height="2001" alt="image" src="https://github.com/user-attachments/assets/7d8d2585-ce83-468a-9bd5-cf92bc43bd4c" />
 
+[![Download Latest Release](https://img.shields.io/badge/Download-v1.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v1.0.0/Debian.Node.js.Installer.Setup.1.0.0.exe)
 
 # Debian Node.js LTS Installer
 
