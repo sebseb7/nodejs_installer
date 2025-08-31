@@ -160,4 +160,4 @@ v18.19.0
 
 ## License
 
-MIT
+0BSD
