@@ -1,3 +1,6 @@
+<img width="839" height="2001" alt="image" src="https://github.com/user-attachments/assets/7d8d2585-ce83-468a-9bd5-cf92bc43bd4c" />
+
+
 # Debian Node.js LTS Installer
 
 A Node.js application that automatically connects to a Debian host via SSH and installs Node.js LTS using the official NodeSource repository.
