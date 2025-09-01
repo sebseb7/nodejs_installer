@@ -1,6 +1,7 @@
-[![Download Latest Release](https://img.shields.io/badge/Download-v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/ssl_installer/releases/download/v2.0.0/Debian.SSL.Installer.Setup.2.0.0.exe)
+[![Download Latest Release](https://img.shields.io/badge/Download-v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v2.0.0/Debian.Development.Stack.Installer.Setup.2.0.0.exe)
 
-<img width="419" height="1000" alt="image" src="https://github.com/user-attachments/assets/bbfcd7b3-595e-4d09-acc1-8db1ee97b618" />
+<img width="395" height="900" alt="image" src="https://github.com/user-attachments/assets/3e385d9b-b710-4a4a-b587-884aea7fe70c" />
+
 
 # Let's Encrypt SSL Certificate Installer
 
