@@ -56,6 +56,9 @@ class SimpleSSLInstaller {
                 'Installing Certbot'
             );
 
+            // Create renewal hook directory and script
+            await this.createRenewalHook(conn);
+
             // Verify installation
             const result = await this.executeCommand(conn, 'certbot --version', 'Verifying Certbot');
             if (result.exitCode === 0) {
@@ -70,7 +73,63 @@ class SimpleSSLInstaller {
         }
     }
 
+    async createRenewalHook(conn) {
+        this.log('🔄 Creating SSL certificate renewal hook...');
 
+        try {
+            // Create the renewal-hooks directory if it doesn't exist
+            await this.executeCommand(
+                conn,
+                'sudo mkdir -p /etc/letsencrypt/renewal-hooks/post',
+                'Creating renewal hooks directory'
+            );
+
+            // Create the nginx reload hook script
+            const hookScript = `#!/bin/bash
+# Let's Encrypt certificate renewal hook
+# This script reloads nginx after certificate renewal
+
+# Log the renewal
+echo "$(date): SSL certificate renewed, reloading nginx..." >> /var/log/letsencrypt-renewal.log
+
+# Reload nginx to pick up new certificates
+sudo systemctl reload nginx
+
+# Log success
+echo "$(date): Nginx reloaded successfully" >> /var/log/letsencrypt-renewal.log
+
+exit 0`;
+
+            // Write the hook script
+            await this.executeCommand(
+                conn,
+                `cat > /tmp/nginx-reload-hook.sh << 'EOF'
+${hookScript}
+EOF`,
+                'Creating nginx reload hook script'
+            );
+
+            // Move to renewal hooks directory and make executable
+            await this.executeCommand(
+                conn,
+                'sudo mv /tmp/nginx-reload-hook.sh /etc/letsencrypt/renewal-hooks/post/nginx-reload.sh',
+                'Moving hook script to renewal hooks directory'
+            );
+
+            await this.executeCommand(
+                conn,
+                'sudo chmod +x /etc/letsencrypt/renewal-hooks/post/nginx-reload.sh',
+                'Making hook script executable'
+            );
+
+            this.log('✅ SSL renewal hook created successfully');
+            this.log('📝 Nginx will automatically reload after certificate renewals');
+
+        } catch (error) {
+            this.log(`⚠️ Failed to create renewal hook: ${error.message}`);
+            this.log('📝 You may need to manually reload nginx after certificate renewals');
+        }
+    }
 
     async obtainSSLCertificate(conn, domain, email) {
         this.log(`🔐 Obtaining SSL certificate for ${domain}...`);
