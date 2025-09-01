@@ -12,9 +12,14 @@ const elements = {
     installNginx: document.getElementById('installNginx'),
     installBasicTools: document.getElementById('installBasicTools'),
     installLetsEncrypt: document.getElementById('installLetsEncrypt'),
+    installStaticWebsite: document.getElementById('installStaticWebsite'),
     sslDomain: document.getElementById('sslDomain'),
     sslEmail: document.getElementById('sslEmail'),
     letsEncryptConfig: document.getElementById('letsEncryptConfig'),
+    staticWebsiteConfig: document.getElementById('staticWebsiteConfig'),
+    staticDomain: document.getElementById('staticDomain'),
+    staticZipPath: document.getElementById('staticZipPath'),
+    selectStaticZipBtn: document.getElementById('selectStaticZipBtn'),
     checkBtn: document.getElementById('checkBtn'),
     installBtn: document.getElementById('installBtn'),
     statusArea: document.getElementById('statusArea'),
@@ -290,6 +295,35 @@ function validateForm() {
         }
     }
 
+    // Validate Static Website configuration if selected
+    if (elements.installStaticWebsite.checked) {
+        if (!elements.staticDomain.value.trim()) {
+            showAlert('danger', 'Please enter a domain name for the static website.');
+            elements.staticDomain.focus();
+            return false;
+        }
+
+        if (!elements.staticZipPath.value.trim()) {
+            showAlert('danger', 'Please select a ZIP file for the static website.');
+            return false;
+        }
+
+        // Basic domain validation
+        const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$/;
+        if (!domainRegex.test(elements.staticDomain.value.trim())) {
+            showAlert('danger', 'Please enter a valid domain name for the static website.');
+            elements.staticDomain.focus();
+            return false;
+        }
+
+        // Check if ZIP file exists
+        const fs = require('fs');
+        if (!fs.existsSync(elements.staticZipPath.value.trim())) {
+            showAlert('danger', 'The selected ZIP file does not exist.');
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -304,11 +338,16 @@ function getFormData() {
             nodejs: elements.installNodejs.checked,
             nginx: elements.installNginx.checked,
             basicTools: elements.installBasicTools.checked,
-            letsEncrypt: elements.installLetsEncrypt.checked
+            letsEncrypt: elements.installLetsEncrypt.checked,
+            staticWebsite: elements.installStaticWebsite.checked
         },
         sslConfig: {
             domain: elements.sslDomain.value.trim(),
             email: elements.sslEmail.value.trim()
+        },
+        staticWebsiteConfig: {
+            domain: elements.staticDomain.value.trim(),
+            zipFilePath: elements.staticZipPath.value.trim()
         }
     };
 }
@@ -334,6 +373,31 @@ elements.selectPemBtn.addEventListener('click', async () => {
         // Restore button state
         elements.selectPemBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
         elements.selectPemBtn.disabled = false;
+    }
+});
+
+// ZIP file selection handler
+elements.selectStaticZipBtn.addEventListener('click', async () => {
+    try {
+        // Show loading state
+        const originalText = elements.selectStaticZipBtn.innerHTML;
+        elements.selectStaticZipBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Selecting...';
+        elements.selectStaticZipBtn.disabled = true;
+
+        // Use IPC to communicate with main process
+        const filePath = await ipcRenderer.invoke('select-zip-file');
+        if (filePath) {
+            elements.staticZipPath.value = filePath;
+            // Show success message if file was selected
+            showAlert('success', 'ZIP file selected successfully!');
+        }
+    } catch (error) {
+        console.error('Error selecting ZIP file:', error);
+        showAlert('danger', 'Error selecting ZIP file.');
+    } finally {
+        // Restore button state
+        elements.selectStaticZipBtn.innerHTML = '<i class="fas fa-folder-open"></i>';
+        elements.selectStaticZipBtn.disabled = false;
     }
 });
 
@@ -439,6 +503,40 @@ elements.installNginx.addEventListener('change', () => {
     if (!elements.installNginx.checked && elements.installLetsEncrypt.checked) {
         elements.installLetsEncrypt.checked = false;
         elements.letsEncryptConfig.style.display = 'none';
+    }
+});
+
+// Static Website checkbox handler
+elements.installStaticWebsite.addEventListener('change', () => {
+    if (elements.installStaticWebsite.checked) {
+        elements.staticWebsiteConfig.style.display = 'block';
+        // Auto-enable nginx and basic tools if Static Website is selected
+        elements.installNginx.checked = true;
+        elements.installBasicTools.checked = true;
+    } else {
+        elements.staticWebsiteConfig.style.display = 'none';
+    }
+});
+
+// Nginx checkbox handler - disable Let's Encrypt and Static Website if nginx is unchecked
+elements.installNginx.addEventListener('change', () => {
+    if (!elements.installNginx.checked) {
+        if (elements.installLetsEncrypt.checked) {
+            elements.installLetsEncrypt.checked = false;
+            elements.letsEncryptConfig.style.display = 'none';
+        }
+        if (elements.installStaticWebsite.checked) {
+            elements.installStaticWebsite.checked = false;
+            elements.staticWebsiteConfig.style.display = 'none';
+        }
+    }
+});
+
+// Basic Tools checkbox handler - disable Static Website if basic tools is unchecked
+elements.installBasicTools.addEventListener('change', () => {
+    if (!elements.installBasicTools.checked && elements.installStaticWebsite.checked) {
+        elements.installStaticWebsite.checked = false;
+        elements.staticWebsiteConfig.style.display = 'none';
     }
 });
 

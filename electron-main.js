@@ -8,6 +8,7 @@ const NodeJSInstaller = require('./index');
 const NginxInstaller = require('./nginx-installer');
 const BasicToolsInstaller = require('./basic-tools-installer');
 const LetsEncryptInstaller = require('./letsencrypt-installer');
+const StaticWebsiteInstaller = require('./static-website-installer');
 
 // Import SSH key utilities (for OpenSSH format conversion)
 const sshpk = require('sshpk');
@@ -128,6 +129,26 @@ ipcMain.handle('select-pem-file', async () => {
   return null;
 });
 
+// IPC handler for ZIP file selection
+ipcMain.handle('select-zip-file', async () => {
+  // Set default path to Downloads folder
+  const downloadsPath = path.join(os.homedir(), 'Downloads');
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'ZIP Files', extensions: ['zip'] },
+      { name: 'All Files', extensions: ['*'] }
+    ],
+    defaultPath: downloadsPath
+  });
+
+  if (!result.canceled) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
 // IPC handler for checking Node.js installation
 ipcMain.handle('check-nodejs', async (event, config) => {
   try {
@@ -207,7 +228,8 @@ ipcMain.handle('check-selected', async (event, config) => {
       nodejs: null,
       nginx: null,
       basicTools: null,
-      ssl: null
+      ssl: null,
+      staticWebsite: null
     };
 
     // Check selected components
@@ -244,6 +266,14 @@ ipcMain.handle('check-selected', async (event, config) => {
         const sslInstaller = new LetsEncryptInstaller(progressCallback);
         sslInstaller.config = connectionConfig;
         results.ssl = await sslInstaller.checkSSLStatus(conn, config.sslConfig.domain);
+      }
+
+      // 5. Check Static Website if selected
+      if (config.installOptions.staticWebsite && config.staticWebsiteConfig.domain) {
+        event.sender.send('progress-update', `🔍 Checking static website status for ${config.staticWebsiteConfig.domain}...`);
+        const staticInstaller = new StaticWebsiteInstaller(progressCallback);
+        staticInstaller.config = connectionConfig;
+        results.staticWebsite = await staticInstaller.checkSSLStatus(conn, config.staticWebsiteConfig.domain);
       }
 
       return {
@@ -336,7 +366,8 @@ ipcMain.handle('install-selected', async (event, config) => {
       nodejs: null,
       nginx: null,
       basicTools: null,
-      letsEncrypt: null
+      letsEncrypt: null,
+      staticWebsite: null
     };
 
     // Install selected components in order
@@ -392,6 +423,52 @@ ipcMain.handle('install-selected', async (event, config) => {
             results.letsEncrypt = await letsEncryptInstaller.installLetsEncrypt(conn);
           } catch (error) {
             event.sender.send('progress-update', `❌ Let's Encrypt setup failed: ${error.message}`);
+          }
+        }
+      }
+
+      // 5. Install Static Website if selected (requires Nginx and Basic Tools)
+      if (config.installOptions.staticWebsite) {
+        // Check if both Nginx and Basic Tools are installed
+        const nginxInstalled = results.nginx && results.nginx.installed;
+        const basicToolsInstalled = results.basicTools && results.basicTools.allInstalled;
+
+        if (!nginxInstalled) {
+          event.sender.send('progress-update', '❌ Static Website requires Nginx. Skipping static website setup.');
+        } else if (!basicToolsInstalled) {
+          event.sender.send('progress-update', '❌ Static Website requires Basic Tools (including unzip). Skipping static website setup.');
+        } else {
+          event.sender.send('progress-update', '🌐 Installing static website...');
+
+          // Double-check nginx is accessible before proceeding
+          const nginxDoubleCheck = await new Promise((resolve) => {
+            conn.exec('command -v nginx >/dev/null 2>&1 && nginx -v 2>&1 | head -1', (err, stream) => {
+              if (err) {
+                resolve(false);
+                return;
+              }
+
+              let output = '';
+              stream.on('close', (code) => {
+                resolve(code === 0);
+              });
+              stream.on('data', (data) => {
+                output += data.toString();
+              });
+            });
+          });
+
+          if (!nginxDoubleCheck) {
+            event.sender.send('progress-update', '⚠️ Nginx detected but not accessible. Attempting static website installation anyway...');
+          }
+
+          const staticWebsiteInstaller = new StaticWebsiteInstaller(progressCallback);
+          staticWebsiteInstaller.config = connectionConfig;
+          staticWebsiteInstaller.setWebsiteConfig(config.staticWebsiteConfig.domain, config.staticWebsiteConfig.zipFilePath);
+          try {
+            results.staticWebsite = await staticWebsiteInstaller.installStaticWebsite(conn);
+          } catch (error) {
+            event.sender.send('progress-update', `❌ Static website installation failed: ${error.message}`);
           }
         }
       }

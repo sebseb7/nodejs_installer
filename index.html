@@ -238,6 +238,13 @@
                                 <br><small class="text-muted">Install SSL certificates with auto-renewal</small>
                             </label>
                         </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="installStaticWebsite">
+                            <label class="form-check-label" for="installStaticWebsite">
+                                <strong><i class="fas fa-globe text-success me-1"></i>Static Website</strong>
+                                <br><small class="text-muted">Deploy static website from ZIP file</small>
+                            </label>
+                        </div>
                     </div>
                     <div class="col-md-6" id="letsEncryptConfig" style="display: none;">
                         <div class="alert alert-info">
@@ -251,6 +258,26 @@
                                 <label for="sslEmail" class="form-label">Email Address</label>
                                 <input type="email" class="form-control" id="sslEmail" placeholder="admin@example.com">
                                 <small class="text-muted">Email for certificate notifications and recovery</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="staticWebsiteConfig" style="display: none;">
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-globe me-1"></i>Static Website Configuration</h6>
+                            <div class="mb-2">
+                                <label for="staticDomain" class="form-label">Domain Name</label>
+                                <input type="text" class="form-control" id="staticDomain" placeholder="example.com">
+                                <small class="text-muted">Domain for the static website</small>
+                            </div>
+                            <div class="mb-2">
+                                <label for="staticZipPath" class="form-label">ZIP File Path</label>
+                                <div class="file-input-group">
+                                    <input type="text" class="form-control" id="staticZipPath" placeholder="Select your website ZIP file..." readonly>
+                                    <button type="button" class="btn-file" id="selectStaticZipBtn" title="Select ZIP file">
+                                        <i class="fas fa-folder-open"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">ZIP file containing your static website files</small>
                             </div>
                         </div>
                     </div>

@@ -19,7 +19,8 @@ class BasicToolsInstaller {
             'curl': { command: 'curl', package: 'curl' },
             'wget': { command: 'wget', package: 'wget' },
             'vim': { command: 'vim', package: 'vim-nox' },
-            'mc': { command: 'mc', package: 'mc' }
+            'mc': { command: 'mc', package: 'mc' },
+            'unzip': { command: 'unzip', package: 'unzip' }
         };
 
         // Generate tools array from mapping for backward compatibility

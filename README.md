@@ -1,11 +1,11 @@
-[![Download Latest Release](https://img.shields.io/badge/Download-v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v2.0.0/Debian.Development.Stack.Installer.Setup.2.0.0.exe)
+[![Download Latest Release](https://img.shields.io/badge/Download-v3.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v3.0.0/Debian.Development.Stack.Installer.Setup.3.0.0.exe)
 
 <img width="395" height="900" alt="image" src="https://github.com/user-attachments/assets/3e385d9b-b710-4a4a-b587-884aea7fe70c" />
 
 
-# Let's Encrypt SSL Certificate Installer
+# Debian Development Stack Installer v3.0.0
 
-A streamlined application that connects to a Debian host via SSH and installs Let's Encrypt SSL certificates with domain reachability verification.
+A comprehensive SSH-based installer for Debian hosts that provides Node.js, Nginx, development tools, SSL certificates, and static website deployment with automated configuration.
 
 ## Features
 
@@ -16,9 +16,14 @@ A streamlined application that connects to a Debian host via SSH and installs Le
   - Certbot installation from official Debian packages
   - Let's Encrypt SSL certificate obtainment using nginx plugin
   - Automatic certificate renewal (handled by certbot)
+- 🌐 **Static Website Deployment** (NEW in v3.0.0):
+  - Upload and extract ZIP files containing static websites
+  - Automatic nginx configuration generation
+  - SSL integration when certificates are available
+  - Clean deployment with proper file permissions
 - ✅ Comprehensive error handling and logging
 - 🔄 Real-time command execution feedback
-- 🖥️ **GUI Version**: Modern Electron-based interface for SSL installation
+- 🖥️ **GUI Version**: Modern Electron-based interface for all installation tasks
 
 ## Prerequisites
 
@@ -80,8 +85,9 @@ node index.js
 
 ## What it does
 
-The SSL installer will:
+The installer provides comprehensive deployment capabilities:
 
+### SSL Certificate Installation
 1. **Validate Configuration**: Check SSH key and connection parameters
 2. **Establish SSH Connection**: Connect to the target Debian host
 3. **Domain Reachability Test**: Place test file in `/usr/share/nginx/html/.well-known/acme-challenge/` and verify domain accessibility
@@ -89,6 +95,21 @@ The SSL installer will:
 5. **Obtain SSL Certificate**: Use `certbot certonly --nginx` to obtain Let's Encrypt certificate
 6. **Certificate Storage**: Save certificates to `/etc/letsencrypt/live/domain.com/`
 7. **Auto-Renewal**: Certbot automatically handles certificate renewal
+
+### Static Website Deployment (v3.0.0)
+1. **Clean Installation**: Remove existing nginx config and webroot for the domain
+2. **ZIP File Upload**: Securely upload and extract static website files (requires unzip)
+3. **Webroot Creation**: Set up `/opt/webroot/<domain>` with proper permissions
+4. **Nginx Configuration**: Generate nginx config at `/etc/nginx/conf.d/<domain>.conf`
+5. **SSL Integration**: Automatically enable HTTPS if SSL certificate exists
+6. **Service Reload**: Restart nginx to apply new configuration
+
+**Dependencies**: Requires Nginx and Basic Tools (for unzip functionality)
+
+### Development Stack Installation
+- **Node.js LTS**: Install from NodeSource repository with npm
+- **Nginx**: Install web server from official Debian packages
+- **Basic Tools**: Install development essentials (git, htop, ripgrep, build-essential, unzip, etc.)
 
 ## GUI Interface
 
@@ -105,9 +126,15 @@ The Electron-based GUI provides an intuitive interface with:
 - **IP/Host field**: Enter your server address or hostname
 - **User field**: SSH username (defaults to "admin")
 - **SSH key file selector**: Browse and select your SSH private key file (.pem or .ppk)
-- **Domain field**: Enter the domain name for SSL certificate
-- **Email field**: Enter email address for Let's Encrypt registration
-- **Install SSL button**: Install SSL certificate for the specified domain
+- **Installation Options**:
+  - Node.js LTS: Install Node.js from NodeSource repository
+  - Nginx: Install web server from official Debian packages
+  - Basic Tools: Install development tools (git, htop, ripgrep, etc.)
+  - Let's Encrypt SSL: Install SSL certificates with auto-renewal
+  - **Static Website**: Deploy static website from ZIP file (NEW)
+- **SSL Configuration**: Domain and email for Let's Encrypt certificates
+- **Static Website Configuration**: Domain and ZIP file for website deployment
+- **Action Buttons**: Check status or install selected components
 
 ## Security Notes
 
