@@ -245,6 +245,13 @@
                                 <br><small class="text-muted">Deploy static website from ZIP file</small>
                             </label>
                         </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="installVscodeWeb">
+                            <label class="form-check-label" for="installVscodeWeb">
+                                <strong><i class="fas fa-code text-primary me-1"></i>VS Code Web</strong>
+                                <br><small class="text-muted">Install VS Code Server with web interface</small>
+                            </label>
+                        </div>
                     </div>
                     <div class="col-md-6" id="letsEncryptConfig" style="display: none;">
                         <div class="alert alert-info">
@@ -278,6 +285,29 @@
                                     </button>
                                 </div>
                                 <small class="text-muted">ZIP file containing your static website files</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="vscodeWebConfig" style="display: none;">
+                        <div class="alert alert-primary">
+                            <h6><i class="fas fa-code me-1"></i>VS Code Web Configuration</h6>
+                            <div class="mb-2">
+                                <label for="vscodeDomain" class="form-label">Domain Name</label>
+                                <input type="text" class="form-control" id="vscodeDomain" placeholder="example.com">
+                                <small class="text-muted">Domain where VS Code Web will be accessible</small>
+                            </div>
+                            <div class="mb-2">
+                                <label for="vscodePath" class="form-label">Path</label>
+                                <input type="text" class="form-control" id="vscodePath" placeholder="/code" value="/code">
+                                <small class="text-muted">URL path for VS Code Web (default: /code)</small>
+                            </div>
+                            <div class="mb-2">
+                                <label for="vscodePassword" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="vscodePassword" placeholder="Enter a secure password">
+                                <small class="text-muted">Password to access VS Code Web interface</small>
+                            </div>
+                            <div class="alert alert-warning mt-2">
+                                <small><i class="fas fa-exclamation-triangle me-1"></i><strong>Requirements:</strong> SSL certificate must be installed first for the specified domain.</small>
                             </div>
                         </div>
                     </div>

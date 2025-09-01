@@ -1,11 +1,11 @@
-[![Download Latest Release](https://img.shields.io/badge/Download-v3.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v3.0.0/Debian.Development.Stack.Installer.Setup.3.0.0.exe)
+[![Download Latest Release](https://img.shields.io/badge/Download-v4.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v4.0.0/Debian.Development.Stack.Installer.Setup.4.0.0.exe)
 
 <img width="395" height="900" alt="image" src="https://github.com/user-attachments/assets/3e385d9b-b710-4a4a-b587-884aea7fe70c" />
 
 
-# Debian Development Stack Installer v3.0.0
+# Debian Development Stack Installer v4.0.0
 
-A comprehensive SSH-based installer for Debian hosts that provides Node.js, Nginx, development tools, SSL certificates, and static website deployment with automated configuration.
+A comprehensive SSH-based installer for Debian hosts that provides Node.js, Nginx, development tools, SSL certificates, static website deployment, and VS Code Web server with automated configuration.
 
 ## Features
 
@@ -21,6 +21,12 @@ A comprehensive SSH-based installer for Debian hosts that provides Node.js, Ngin
   - Automatic nginx configuration generation
   - SSL integration when certificates are available
   - Clean deployment with proper file permissions
+- 📝 **VS Code Web Server** (NEW in v4.0.0):
+  - Install and configure VS Code Server (code-server)
+  - Automatic nginx reverse proxy setup with WebSocket support
+  - Secure password authentication with argon2 hashing
+  - SSL integration for HTTPS access
+  - Customizable URL path (default: /code)
 - ✅ Comprehensive error handling and logging
 - 🔄 Real-time command execution feedback
 - 🖥️ **GUI Version**: Modern Electron-based interface for all installation tasks
@@ -83,6 +89,19 @@ The installer provides comprehensive deployment capabilities:
 
 **Dependencies**: Requires Nginx and Basic Tools (for unzip functionality)
 
+### VS Code Web Server Installation (v4.0.0)
+1. **SSL Verification**: Check that SSL certificate exists for the specified domain
+2. **Code-Server Installation**: Download and install VS Code Server from official repository
+3. **Service Setup**: Enable and start code-server service for the current user
+4. **Password Security**: Generate argon2 hash for the provided password
+5. **Configuration**: Create code-server config with secure settings
+6. **Nginx Proxy**: Add reverse proxy location block to nginx configuration
+7. **WebSocket Support**: Configure proper WebSocket proxy headers for VS Code
+8. **SSL Integration**: Ensure all traffic goes through HTTPS
+
+**Dependencies**: Requires Nginx and Let's Encrypt SSL certificate for the domain
+**Access**: Available at `https://yourdomain.com/code` (or custom path) with password authentication
+
 ### Development Stack Installation
 - **Node.js LTS**: Install from NodeSource repository with npm
 - **Nginx**: Install web server from official Debian packages
@@ -109,8 +128,10 @@ The Electron-based GUI provides an intuitive interface with:
   - Basic Tools: Install development tools (git, htop, ripgrep, etc.)
   - Let's Encrypt SSL: Install SSL certificates with auto-renewal
   - **Static Website**: Deploy static website from ZIP file (NEW)
+  - **VS Code Web**: Install VS Code Server with web interface (NEW)
 - **SSL Configuration**: Domain and email for Let's Encrypt certificates
 - **Static Website Configuration**: Domain and ZIP file for website deployment
+- **VS Code Web Configuration**: Domain, path, and password for VS Code Server
 - **Action Buttons**: Check status or install selected components
 
 ## Security Notes

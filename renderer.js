@@ -13,6 +13,7 @@ const elements = {
     installBasicTools: document.getElementById('installBasicTools'),
     installLetsEncrypt: document.getElementById('installLetsEncrypt'),
     installStaticWebsite: document.getElementById('installStaticWebsite'),
+    installVscodeWeb: document.getElementById('installVscodeWeb'),
     sslDomain: document.getElementById('sslDomain'),
     sslEmail: document.getElementById('sslEmail'),
     letsEncryptConfig: document.getElementById('letsEncryptConfig'),
@@ -20,6 +21,10 @@ const elements = {
     staticDomain: document.getElementById('staticDomain'),
     staticZipPath: document.getElementById('staticZipPath'),
     selectStaticZipBtn: document.getElementById('selectStaticZipBtn'),
+    vscodeWebConfig: document.getElementById('vscodeWebConfig'),
+    vscodeDomain: document.getElementById('vscodeDomain'),
+    vscodePath: document.getElementById('vscodePath'),
+    vscodePassword: document.getElementById('vscodePassword'),
     checkBtn: document.getElementById('checkBtn'),
     installBtn: document.getElementById('installBtn'),
     statusArea: document.getElementById('statusArea'),
@@ -339,7 +344,8 @@ function getFormData() {
             nginx: elements.installNginx.checked,
             basicTools: elements.installBasicTools.checked,
             letsEncrypt: elements.installLetsEncrypt.checked,
-            staticWebsite: elements.installStaticWebsite.checked
+            staticWebsite: elements.installStaticWebsite.checked,
+            vscodeWeb: elements.installVscodeWeb.checked
         },
         sslConfig: {
             domain: elements.sslDomain.value.trim(),
@@ -348,6 +354,11 @@ function getFormData() {
         staticWebsiteConfig: {
             domain: elements.staticDomain.value.trim(),
             zipFilePath: elements.staticZipPath.value.trim()
+        },
+        vscodeWebConfig: {
+            domain: elements.vscodeDomain.value.trim(),
+            path: elements.vscodePath.value.trim() || '/code',
+            password: elements.vscodePassword.value.trim()
         }
     };
 }
@@ -518,7 +529,19 @@ elements.installStaticWebsite.addEventListener('change', () => {
     }
 });
 
-// Nginx checkbox handler - disable Let's Encrypt and Static Website if nginx is unchecked
+// VS Code Web checkbox handler
+elements.installVscodeWeb.addEventListener('change', () => {
+    if (elements.installVscodeWeb.checked) {
+        elements.vscodeWebConfig.style.display = 'block';
+        // Auto-enable nginx and Let's Encrypt if VS Code Web is selected
+        elements.installNginx.checked = true;
+        elements.installLetsEncrypt.checked = true;
+    } else {
+        elements.vscodeWebConfig.style.display = 'none';
+    }
+});
+
+// Nginx checkbox handler - disable Let's Encrypt, Static Website, and VS Code Web if nginx is unchecked
 elements.installNginx.addEventListener('change', () => {
     if (!elements.installNginx.checked) {
         if (elements.installLetsEncrypt.checked) {
@@ -528,6 +551,10 @@ elements.installNginx.addEventListener('change', () => {
         if (elements.installStaticWebsite.checked) {
             elements.installStaticWebsite.checked = false;
             elements.staticWebsiteConfig.style.display = 'none';
+        }
+        if (elements.installVscodeWeb.checked) {
+            elements.installVscodeWeb.checked = false;
+            elements.vscodeWebConfig.style.display = 'none';
         }
     }
 });

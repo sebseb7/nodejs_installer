@@ -9,6 +9,7 @@ const NginxInstaller = require('./nginx-installer');
 const BasicToolsInstaller = require('./basic-tools-installer');
 const LetsEncryptInstaller = require('./letsencrypt-installer');
 const StaticWebsiteInstaller = require('./static-website-installer');
+const VSCodeWebInstaller = require('./vscode-web-installer');
 
 // Import SSH key utilities (for OpenSSH format conversion)
 const sshpk = require('sshpk');
@@ -229,7 +230,8 @@ ipcMain.handle('check-selected', async (event, config) => {
       nginx: null,
       basicTools: null,
       ssl: null,
-      staticWebsite: null
+      staticWebsite: null,
+      vscodeWeb: null
     };
 
     // Check selected components
@@ -274,6 +276,14 @@ ipcMain.handle('check-selected', async (event, config) => {
         const staticInstaller = new StaticWebsiteInstaller(progressCallback);
         staticInstaller.config = connectionConfig;
         results.staticWebsite = await staticInstaller.checkSSLStatus(conn, config.staticWebsiteConfig.domain);
+      }
+
+      // 6. Check VS Code Web if selected
+      if (config.installOptions.vscodeWeb && config.vscodeWebConfig.domain) {
+        event.sender.send('progress-update', `🔍 Checking VS Code Web status for ${config.vscodeWebConfig.domain}...`);
+        const vscodeInstaller = new VSCodeWebInstaller(progressCallback);
+        vscodeInstaller.config = connectionConfig;
+        results.vscodeWeb = await vscodeInstaller.checkSSLStatus(conn, config.vscodeWebConfig.domain);
       }
 
       return {
@@ -469,6 +479,31 @@ ipcMain.handle('install-selected', async (event, config) => {
             results.staticWebsite = await staticWebsiteInstaller.installStaticWebsite(conn);
           } catch (error) {
             event.sender.send('progress-update', `❌ Static website installation failed: ${error.message}`);
+          }
+        }
+      }
+
+      // 6. Install VS Code Web if selected (requires SSL certificate)
+      if (config.installOptions.vscodeWeb) {
+        // Check if SSL certificate exists for the domain
+        const sslExists = results.ssl && results.ssl.hasSSL;
+
+        if (!sslExists) {
+          event.sender.send('progress-update', '❌ VS Code Web requires SSL certificate to be installed first. Skipping VS Code Web setup.');
+        } else {
+          event.sender.send('progress-update', '📝 Installing VS Code Web...');
+
+          const vscodeWebInstaller = new VSCodeWebInstaller(progressCallback);
+          vscodeWebInstaller.config = connectionConfig;
+          vscodeWebInstaller.setVSCodeConfig(
+            config.vscodeWebConfig.domain,
+            config.vscodeWebConfig.path || '/code',
+            config.vscodeWebConfig.password
+          );
+          try {
+            results.vscodeWeb = await vscodeWebInstaller.installVSCodeWeb(conn);
+          } catch (error) {
+            event.sender.send('progress-update', `❌ VS Code Web installation failed: ${error.message}`);
           }
         }
       }
