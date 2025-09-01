@@ -1,12 +1,62 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-// Import the NodeJS installer class
+// Import installer classes
 const NodeJSInstaller = require('./index');
+const NginxInstaller = require('./nginx-installer');
+const BasicToolsInstaller = require('./basic-tools-installer');
+const LetsEncryptInstaller = require('./letsencrypt-installer');
+
+// Import SSH key utilities (for OpenSSH format conversion)
+const sshpk = require('sshpk');
 
 // Keep a global reference of the window object
 let mainWindow;
+
+// Utility function to handle SSH key files
+async function convertKeyFile(filePath, passphrase = null) {
+  try {
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+
+    // Check if it's a PPK file by looking for PPK header
+    if (fileContent.startsWith('PuTTY-User-Key-File-')) {
+      console.log('✅ Detected PPK file - SSH2 supports PPK format natively');
+      return filePath;
+    }
+
+    // Handle OpenSSH format conversion (works reliably)
+    if (fileContent.includes('-----BEGIN OPENSSH PRIVATE KEY-----')) {
+      console.log('Detected OpenSSH format, converting to traditional PEM...');
+      try {
+        const key = sshpk.parsePrivateKey(fileContent, 'openssh');
+        const pemKey = key.toString('pem');
+
+        const tempDir = os.tmpdir();
+        const tempFileName = `converted-ssh-key-${Date.now()}.pem`;
+        const tempFilePath = path.join(tempDir, tempFileName);
+
+        fs.writeFileSync(tempFilePath, pemKey, 'utf8');
+        fs.chmodSync(tempFilePath, 0o600);
+
+        console.log('Successfully converted OpenSSH to PEM format');
+        return tempFilePath;
+      } catch (error) {
+        console.log('OpenSSH conversion failed, using file as-is');
+        return filePath;
+      }
+    }
+
+    // Regular PEM files
+    console.log('Using SSH key file (PEM format assumed)');
+    return filePath;
+
+  } catch (error) {
+    console.error('Error processing SSH key file:', error);
+    throw error;
+  }
+}
 
 // Create the browser window
 function createWindow() {
@@ -19,7 +69,7 @@ function createWindow() {
       enableRemoteModule: true
     },
     resizable: true,
-    title: 'Debian Node.js LTS Installer',
+    title: 'Debian Development Stack Installer',
     autoHideMenuBar: true, // Hide the menu bar
     frame: true // Keep window frame but hide menu
   });
@@ -58,12 +108,18 @@ app.on('activate', () => {
 
 // IPC handlers for file selection
 ipcMain.handle('select-pem-file', async () => {
+  // Set default path to Downloads folder
+  const downloadsPath = path.join(os.homedir(), 'Downloads');
+
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [
+      { name: 'SSH Key Files', extensions: ['pem', 'ppk'] },
       { name: 'PEM Files', extensions: ['pem'] },
+      { name: 'PPK Files', extensions: ['ppk'] },
       { name: 'All Files', extensions: ['*'] }
-    ]
+    ],
+    defaultPath: downloadsPath
   });
 
   if (!result.canceled) {
@@ -83,12 +139,15 @@ ipcMain.handle('check-nodejs', async (event, config) => {
     // Create installer instance with progress callback
     const installer = new NodeJSInstaller(progressCallback);
 
+    // Convert PPK file to OpenSSH format if needed
+    const convertedKeyPath = await convertKeyFile(config.privateKeyPath, config.passphrase);
+
     // Set config with GUI values
     const connectionConfig = {
       host: config.host,
       port: parseInt(config.port) || 22,
       username: config.username,
-      privateKeyPath: config.privateKeyPath,
+      privateKeyPath: convertedKeyPath,
       passphrase: config.passphrase || undefined
     };
 
@@ -118,6 +177,240 @@ ipcMain.handle('check-nodejs', async (event, config) => {
   }
 });
 
+// IPC handler for checking selected components
+ipcMain.handle('check-selected', async (event, config) => {
+  try {
+    // Progress callback to send updates to renderer
+    const progressCallback = (message) => {
+      event.sender.send('progress-update', message);
+    };
+
+    // Convert PPK file to OpenSSH format if needed
+    const convertedKeyPath = await convertKeyFile(config.privateKeyPath, config.passphrase);
+
+    // Set up connection config
+    const connectionConfig = {
+      host: config.host,
+      port: parseInt(config.port) || 22,
+      username: config.username,
+      privateKeyPath: convertedKeyPath,
+      passphrase: config.passphrase || undefined
+    };
+
+    // Validate the connection config
+    const tempInstaller = new NodeJSInstaller();
+    tempInstaller.validateConnectionConfig(connectionConfig);
+    tempInstaller.config = connectionConfig;
+
+    // Track check results
+    const results = {
+      nodejs: null,
+      nginx: null,
+      basicTools: null,
+      ssl: null
+    };
+
+    // Check selected components
+    const conn = await tempInstaller.connect();
+
+    try {
+      // 1. Check Node.js if selected
+      if (config.installOptions.nodejs) {
+        event.sender.send('progress-update', '🔍 Checking Node.js installation...');
+        const nodejsInstaller = new NodeJSInstaller(progressCallback);
+        nodejsInstaller.config = connectionConfig;
+        results.nodejs = await nodejsInstaller.checkNodeJSInstalled(conn);
+      }
+
+      // 2. Check Nginx if selected
+      if (config.installOptions.nginx) {
+        event.sender.send('progress-update', '🔍 Checking Nginx installation...');
+        const nginxInstaller = new NginxInstaller(progressCallback);
+        nginxInstaller.config = connectionConfig;
+        results.nginx = await nginxInstaller.checkNginxInstalled(conn);
+      }
+
+      // 3. Check Basic Tools if selected
+      if (config.installOptions.basicTools) {
+        event.sender.send('progress-update', '🔍 Checking basic tools installation...');
+        const basicToolsInstaller = new BasicToolsInstaller(progressCallback);
+        basicToolsInstaller.config = connectionConfig;
+        results.basicTools = await basicToolsInstaller.checkBasicToolsInstalled(conn);
+      }
+
+      // 4. Check SSL status if selected
+      if (config.installOptions.letsEncrypt && config.sslConfig.domain) {
+        event.sender.send('progress-update', `🔍 Checking SSL certificate status for ${config.sslConfig.domain}...`);
+        const sslInstaller = new LetsEncryptInstaller(progressCallback);
+        sslInstaller.config = connectionConfig;
+        results.ssl = await sslInstaller.checkSSLStatus(conn, config.sslConfig.domain);
+      }
+
+      return {
+        success: true,
+        results: results
+      };
+    } finally {
+      conn.end();
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// IPC handler for starting nginx service
+ipcMain.handle('start-nginx', async (event, config) => {
+  try {
+    // Progress callback to send updates to renderer
+    const progressCallback = (message) => {
+      event.sender.send('progress-update', message);
+    };
+
+    // Convert PPK file to OpenSSH format if needed
+    const convertedKeyPath = await convertKeyFile(config.privateKeyPath, config.passphrase);
+
+    // Set up connection config
+    const connectionConfig = {
+      host: config.host,
+      port: parseInt(config.port) || 22,
+      username: config.username,
+      privateKeyPath: convertedKeyPath,
+      passphrase: config.passphrase || undefined
+    };
+
+    // Validate the connection config
+    const tempInstaller = new NginxInstaller();
+    tempInstaller.validateConnectionConfig(connectionConfig);
+    tempInstaller.config = connectionConfig;
+
+    // Connect and start nginx
+    const conn = await tempInstaller.connect();
+
+    try {
+      const startResult = await tempInstaller.startNginx(conn);
+      return {
+        success: startResult.success,
+        message: startResult.message
+      };
+    } finally {
+      conn.end();
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// IPC handler for installing selected components
+ipcMain.handle('install-selected', async (event, config) => {
+  try {
+    // Progress callback to send updates to renderer
+    const progressCallback = (message) => {
+      event.sender.send('progress-update', message);
+    };
+
+    // Convert PPK file to OpenSSH format if needed
+    const convertedKeyPath = await convertKeyFile(config.privateKeyPath, config.passphrase);
+
+    // Set up connection config
+    const connectionConfig = {
+      host: config.host,
+      port: parseInt(config.port) || 22,
+      username: config.username,
+      privateKeyPath: convertedKeyPath,
+      passphrase: config.passphrase || undefined
+    };
+
+    // Validate the connection config
+    const tempInstaller = new NodeJSInstaller();
+    tempInstaller.validateConnectionConfig(connectionConfig);
+    tempInstaller.config = connectionConfig;
+
+    // Track installation results
+    const results = {
+      nodejs: null,
+      nginx: null,
+      basicTools: null,
+      letsEncrypt: null
+    };
+
+    // Install selected components in order
+    const conn = await tempInstaller.connect();
+
+    try {
+      // 1. Install Node.js if selected
+      if (config.installOptions.nodejs) {
+        event.sender.send('progress-update', '📦 Installing Node.js LTS...');
+        const nodejsInstaller = new NodeJSInstaller(progressCallback);
+        nodejsInstaller.config = connectionConfig;
+        try {
+          results.nodejs = await nodejsInstaller.installNodeJS(conn);
+        } catch (error) {
+          event.sender.send('progress-update', `❌ Node.js installation failed: ${error.message}`);
+        }
+      }
+
+      // 2. Install Nginx if selected
+      if (config.installOptions.nginx) {
+        event.sender.send('progress-update', '🌐 Installing Nginx...');
+        const nginxInstaller = new NginxInstaller(progressCallback);
+        nginxInstaller.config = connectionConfig;
+        try {
+          results.nginx = await nginxInstaller.installNginx(conn);
+        } catch (error) {
+          event.sender.send('progress-update', `❌ Nginx installation failed: ${error.message}`);
+        }
+      }
+
+      // 3. Install Basic Tools if selected
+      if (config.installOptions.basicTools) {
+        event.sender.send('progress-update', '🔧 Installing basic development tools...');
+        const basicToolsInstaller = new BasicToolsInstaller(progressCallback);
+        basicToolsInstaller.config = connectionConfig;
+        try {
+          results.basicTools = await basicToolsInstaller.installBasicTools(conn);
+        } catch (error) {
+          event.sender.send('progress-update', `❌ Basic tools installation failed: ${error.message}`);
+        }
+      }
+
+      // 4. Install Let's Encrypt if selected (requires Nginx)
+      if (config.installOptions.letsEncrypt) {
+        if (!results.nginx || !results.nginx.installed) {
+          event.sender.send('progress-update', '❌ Let\'s Encrypt requires Nginx. Skipping SSL setup.');
+        } else {
+          event.sender.send('progress-update', '🔒 Setting up Let\'s Encrypt SSL certificates...');
+          const letsEncryptInstaller = new LetsEncryptInstaller(progressCallback);
+          letsEncryptInstaller.config = connectionConfig;
+          letsEncryptInstaller.setCertificateConfig(config.sslConfig.domain, config.sslConfig.email);
+          try {
+            results.letsEncrypt = await letsEncryptInstaller.installLetsEncrypt(conn);
+          } catch (error) {
+            event.sender.send('progress-update', `❌ Let's Encrypt setup failed: ${error.message}`);
+          }
+        }
+      }
+
+      return {
+        success: true,
+        results: results
+      };
+    } finally {
+      conn.end();
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 // IPC handler for installing Node.js
 ipcMain.handle('install-nodejs', async (event, config) => {
   try {
@@ -129,12 +422,15 @@ ipcMain.handle('install-nodejs', async (event, config) => {
     // Create installer instance with progress callback
     const installer = new NodeJSInstaller(progressCallback);
 
+    // Convert PPK file to OpenSSH format if needed
+    const convertedKeyPath = await convertKeyFile(config.privateKeyPath, config.passphrase);
+
     // Set config with GUI values
     const connectionConfig = {
       host: config.host,
       port: parseInt(config.port) || 22,
       username: config.username,
-      privateKeyPath: config.privateKeyPath,
+      privateKeyPath: convertedKeyPath,
       passphrase: config.passphrase || undefined
     };
 

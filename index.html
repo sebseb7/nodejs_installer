@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debian Node.js LTS Installer</title>
+    <title>Debian Development Stack Installer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -147,8 +147,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1><i class="fab fa-node-js text-success me-2"></i>Debian Node.js LTS Installer</h1>
-            <p>Automated SSH-based Node.js LTS installation for Debian hosts</p>
+            <h1><i class="fas fa-server text-primary me-2"></i>Debian Development Stack Installer</h1>
+            <p>Automated SSH-based installation of Node.js, Nginx, development tools, and SSL certificates for Debian hosts</p>
         </div>
 
         <form id="installerForm">
@@ -192,16 +192,68 @@
                 </div>
             </div>
 
-            <!-- PEM File Selection -->
+            <!-- SSH Key File Selection -->
             <div class="form-group">
                 <label for="privateKeyPath" class="form-label fw-bold">
-                    <i class="fas fa-file-code me-1"></i>SSH Private Key (.pem file)
+                    <i class="fas fa-file-code me-1"></i>SSH Private Key (.pem or .ppk file)
                 </label>
                 <div class="file-input-group">
-                    <input type="text" class="form-control" id="privateKeyPath" placeholder="Select your .pem file..." readonly required>
-                    <button type="button" class="btn-file" id="selectPemBtn" title="Select PEM file">
+                    <input type="text" class="form-control" id="privateKeyPath" placeholder="Select your .pem or .ppk file..." readonly required>
+                    <button type="button" class="btn-file" id="selectPemBtn" title="Select SSH key file (.pem or .ppk)">
                         <i class="fas fa-folder-open"></i>
                     </button>
+                </div>
+            </div>
+
+            <!-- Installation Options -->
+            <div class="form-group">
+                <h5 class="mb-3"><i class="fas fa-cogs me-2"></i>Installation Options</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="installNodejs" checked>
+                            <label class="form-check-label" for="installNodejs">
+                                <strong><i class="fab fa-node-js text-success me-1"></i>Node.js LTS</strong>
+                                <br><small class="text-muted">Install Node.js LTS from NodeSource repository</small>
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="installNginx">
+                            <label class="form-check-label" for="installNginx">
+                                <strong><i class="fas fa-server text-primary me-1"></i>Nginx</strong>
+                                <br><small class="text-muted">Install Nginx web server from official repository</small>
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="installBasicTools">
+                            <label class="form-check-label" for="installBasicTools">
+                                <strong><i class="fas fa-tools text-warning me-1"></i>Basic Tools</strong>
+                                <br><small class="text-muted">Install git, htop, ripgrep, build-essential, and more</small>
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="installLetsEncrypt">
+                            <label class="form-check-label" for="installLetsEncrypt">
+                                <strong><i class="fas fa-shield-alt text-info me-1"></i>Let's Encrypt SSL</strong>
+                                <br><small class="text-muted">Install SSL certificates with auto-renewal</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="letsEncryptConfig" style="display: none;">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle me-1"></i>SSL Certificate Configuration</h6>
+                            <div class="mb-2">
+                                <label for="sslDomain" class="form-label">Domain Name</label>
+                                <input type="text" class="form-control" id="sslDomain" placeholder="example.com">
+                                <small class="text-muted">Domain for SSL certificate (required for Let's Encrypt)</small>
+                            </div>
+                            <div class="mb-2">
+                                <label for="sslEmail" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="sslEmail" placeholder="admin@example.com">
+                                <small class="text-muted">Email for certificate notifications and recovery</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </form>
@@ -209,10 +261,10 @@
         <!-- Action Buttons -->
         <div class="btn-group-custom">
             <button type="button" class="btn btn-primary" id="checkBtn">
-                <i class="fas fa-search me-2"></i>Check Node.js
+                <i class="fas fa-search me-2"></i>Check Status
             </button>
             <button type="button" class="btn btn-success" id="installBtn">
-                <i class="fas fa-download me-2"></i>Install Node.js
+                <i class="fas fa-download me-2"></i>Install Selected
             </button>
         </div>
 

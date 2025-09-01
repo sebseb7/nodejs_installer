@@ -1,7 +1,7 @@
 {
-  "name": "debian-nodejs-installer",
-  "version": "1.0.0",
-  "description": "SSH-based Node.js LTS installer for Debian hosts",
+  "name": "debian-development-stack-installer",
+  "version": "2.0.0",
+  "description": "SSH-based development stack installer for Debian hosts (Node.js, Nginx, tools, SSL)",
   "main": "electron-main.js",
   "scripts": {
     "start": "electron .",
@@ -17,7 +17,9 @@
     "dist:linux": "electron-builder --linux --publish=never"
   },
   "dependencies": {
-    "ssh2": "^1.15.0"
+    "ppk-to-openssh": "^3.2.0",
+    "ssh2": "^1.15.0",
+    "sshpk": "^1.18.0"
   },
   "devDependencies": {
     "electron": "^25.0.0",
@@ -25,7 +27,7 @@
   },
   "build": {
     "appId": "com.debiain.nodejs.installer",
-    "productName": "Debian Node.js Installer",
+    "productName": "Debian Development Stack Installer",
     "directories": {
       "output": "dist"
     },
@@ -42,7 +44,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -50,7 +55,10 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ]
     },
@@ -58,11 +66,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Development"
@@ -77,11 +89,15 @@
   "keywords": [
     "ssh",
     "nodejs",
+    "nginx",
+    "letsencrypt",
     "debian",
     "installer",
     "automation",
     "electron",
-    "gui"
+    "gui",
+    "ssl",
+    "development-stack"
   ],
   "author": "",
   "license": "0BSD"

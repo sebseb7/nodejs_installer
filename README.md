@@ -1,26 +1,29 @@
-[![Download Latest Release](https://img.shields.io/badge/Download-v1.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v1.0.0/Debian.Node.js.Installer.Setup.1.0.0.exe)
+[![Download Latest Release](https://img.shields.io/badge/Download-v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/ssl_installer/releases/download/v2.0.0/Debian.SSL.Installer.Setup.2.0.0.exe)
 
 <img width="419" height="1000" alt="image" src="https://github.com/user-attachments/assets/bbfcd7b3-595e-4d09-acc1-8db1ee97b618" />
 
-# Debian Node.js LTS Installer
+# Let's Encrypt SSL Certificate Installer
 
-A Node.js application that automatically connects to a Debian host via SSH and installs Node.js LTS using the official NodeSource repository.
+A streamlined application that connects to a Debian host via SSH and installs Let's Encrypt SSL certificates with domain reachability verification.
 
 ## Features
 
-- 🔐 SSH authentication using private key (.pem format)
+- 🔐 SSH authentication using private key (.pem or .ppk format)
 - 🛡️ Secure sudo-based installation
-- 📦 Official NodeSource repository for latest LTS
+- 🌐 **Domain Reachability Testing**: Places test file in `/usr/share/nginx/html` and verifies domain accessibility
+- 📦 **SSL Certificate Installation**:
+  - Certbot installation from official Debian packages
+  - Let's Encrypt SSL certificate obtainment using nginx plugin
+  - Automatic certificate renewal (handled by certbot)
 - ✅ Comprehensive error handling and logging
 - 🔄 Real-time command execution feedback
-- 🖥️ **GUI Version**: Modern Electron-based interface
-- 🔍 **Smart Installation**: Checks for existing Node.js before installing
+- 🖥️ **GUI Version**: Modern Electron-based interface for SSL installation
 
 ## Prerequisites
 
 - Node.js installed locally (for running this installer)
 - SSH access to target Debian host as "admin" user
-- SSH private key in .pem format
+- SSH private key in .pem or .ppk format
 - Target host should have `sudo` configured for the admin user
 
 ## Installation
@@ -37,7 +40,7 @@ The GUI application configures everything through the interface:
 
 - **IP/Host**: Enter your server address or hostname
 - **Username**: SSH username (defaults to "admin")
-- **SSH Key**: Browse and select your private key file (.pem)
+- **SSH Key**: Browse and select your private key file (.pem or .ppk)
 - **Passphrase**: Optional SSH key passphrase
 
 ## Usage
@@ -53,9 +56,10 @@ npm start
 The GUI provides:
 - **IP/Host field**: Enter your server address
 - **User field**: Username (defaults to "admin")
-- **PEM file selector**: Browse and select your SSH private key
-- **Check button**: Verify Node.js installation status
-- **Install button**: Install Node.js LTS if not present
+- **SSH key file selector**: Browse and select your SSH private key (.pem or .ppk)
+- **Domain field**: Enter the domain name for SSL certificate installation
+- **Email field**: Enter email address for Let's Encrypt account
+- **Install SSL button**: Install SSL certificate with domain verification
 
 ### CLI Version (Development)
 
@@ -75,17 +79,15 @@ node index.js
 
 ## What it does
 
-The installer will:
+The SSL installer will:
 
-1. **Validate Configuration**: Check that all required environment variables are set and SSH key exists
-2. **Check Existing Installation**: Verify if Node.js is already installed on the target system
-3. **Establish SSH Connection**: Connect to the target host as "admin" user
-4. **Smart Installation**: Only proceed with installation if Node.js is not already present
-5. **Update Package List**: Run `sudo apt update`
-6. **Install Dependencies**: Install `curl` (Debian-compatible, no Ubuntu-specific packages)
-7. **Add NodeSource Repository**: Add the official NodeSource repository for LTS
-8. **Install Node.js LTS**: Install Node.js and npm via `sudo apt install nodejs`
-9. **Verify Installation**: Check Node.js and npm versions
+1. **Validate Configuration**: Check SSH key and connection parameters
+2. **Establish SSH Connection**: Connect to the target Debian host
+3. **Domain Reachability Test**: Place test file in `/usr/share/nginx/html/.well-known/acme-challenge/` and verify domain accessibility
+4. **Install Certbot**: Install certbot and python3-certbot-nginx from official Debian packages
+5. **Obtain SSL Certificate**: Use `certbot certonly --nginx` to obtain Let's Encrypt certificate
+6. **Certificate Storage**: Save certificates to `/etc/letsencrypt/live/domain.com/`
+7. **Auto-Renewal**: Certbot automatically handles certificate renewal
 
 ## GUI Interface
 
@@ -101,9 +103,10 @@ The Electron-based GUI provides an intuitive interface with:
 **Interface Elements:**
 - **IP/Host field**: Enter your server address or hostname
 - **User field**: SSH username (defaults to "admin")
-- **PEM file selector**: Browse and select your SSH private key file
-- **Check button**: Verify current Node.js installation status
-- **Install button**: Install Node.js LTS if not already present
+- **SSH key file selector**: Browse and select your SSH private key file (.pem or .ppk)
+- **Domain field**: Enter the domain name for SSL certificate
+- **Email field**: Enter email address for Let's Encrypt registration
+- **Install SSL button**: Install SSL certificate for the specified domain
 
 ## Security Notes
 
@@ -114,7 +117,7 @@ The Electron-based GUI provides an intuitive interface with:
 ## Troubleshooting
 
 ### Connection Issues
-- Verify SSH key permissions: `chmod 600 admin-key.pem`
+- Verify SSH key permissions: `chmod 600 admin-key.pem` or `chmod 600 admin-key.ppk`
 - Ensure the "admin" user exists and has SSH access
 - Check that SSH port (default 22) is accessible
 
@@ -122,10 +125,19 @@ The Electron-based GUI provides an intuitive interface with:
 - Verify the "admin" user has sudo privileges
 - Check that passwordless sudo is configured (recommended for automation)
 
-### Installation Failures
+### SSL Installation Failures
 - Ensure the target system is Debian-based
 - Check internet connectivity on the target host
+- Verify that nginx is installed and running
+- Ensure the domain DNS points to the server
+- Check that port 80 is accessible for ACME challenges
 - Verify that apt package manager is available and functional
+
+### Domain Issues
+- Verify domain DNS A/AAAA records point to server IP
+- Ensure domain is accessible via HTTP (port 80)
+- Check that nginx can serve files from `/usr/share/nginx/html/`
+- Confirm domain doesn't have existing SSL certificate conflicts
 
 ## Example Output
 
@@ -133,27 +145,29 @@ The Electron-based GUI provides an intuitive interface with:
 ✅ Configuration validated
 🔗 Connecting to admin@your-server.com:22...
 ✅ SSH connection established
-🚀 Starting Node.js LTS installation...
+🚀 Starting SSL certificate installation...
+🌐 Testing domain reachability...
+🔄 Creating ACME challenge directory in nginx default root...
+✅ Setting nginx default root ownership completed
+🔄 Creating domain reachability test file...
+✅ Creating domain reachability test file completed
+🔍 Testing if example.com can reach the test file...
+✅ Domain example.com is reachable and can access test files
+🔧 Installing Certbot...
 🔄 Updating package list...
-Get:1 http://deb.debian.org/debian bullseye InRelease [116 kB]
-...
 ✅ Updating package list completed
-🔄 Installing curl and software-properties-common...
-...
-✅ Installing curl and software-properties-common completed
-🔄 Adding NodeSource repository...
-...
-✅ Adding NodeSource repository completed
-🔄 Installing Node.js LTS...
-...
-✅ Installing Node.js LTS completed
-🔄 Verifying Node.js installation...
-v18.19.0
-9.6.7
-✅ Verifying Node.js installation completed
-🎉 Node.js LTS installation completed successfully!
-📋 Installed versions: v18.19.0
-9.6.7
+🔄 Installing Certbot...
+✅ Installing Certbot completed
+🔄 Verifying Certbot...
+✅ Certbot installed successfully
+🔐 Obtaining SSL certificate for example.com...
+🔄 Obtaining SSL certificate...
+✅ SSL certificate obtained successfully
+📅 Certbot will handle automatic renewal
+🎉 SSL certificate installation completed successfully!
+📋 Domain: example.com
+📋 Email: admin@example.com
+📄 SSL certificates saved to /etc/letsencrypt/live/example.com/
 ✅ All operations completed successfully!
 🔌 SSH connection closed
 ```
