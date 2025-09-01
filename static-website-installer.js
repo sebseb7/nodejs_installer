@@ -241,7 +241,7 @@ class StaticWebsiteInstaller {
             // Remove existing webroot directory
             await this.executeCommand(
                 conn,
-                `sudo rm -rf /opt/webroot/${this.domain}`,
+                `sudo rm -rf /home/<adminuser>/webroot/${this.domain}`,
                 'Removing existing webroot directory'
             );
 
@@ -300,28 +300,28 @@ class StaticWebsiteInstaller {
             // Ensure /opt/webroot directory exists and has correct permissions
             await this.executeCommand(
                 conn,
-                `sudo mkdir -p /opt/webroot`,
+                `sudo mkdir -p /home/<adminuser>/webroot`,
                 'Ensuring webroot parent directory exists'
             );
 
             // Set permissions on /opt/webroot to allow nginx traversal
             await this.executeCommand(
                 conn,
-                `sudo chmod 755 /opt/webroot`,
+                `sudo chmod 755 /home/<adminuser>/webroot`,
                 'Setting webroot parent directory permissions'
             );
 
             // Create domain-specific webroot directory
             await this.executeCommand(
                 conn,
-                `sudo mkdir -p /opt/webroot/${this.domain}`,
+                `sudo mkdir -p /home/<adminuser>/webroot/${this.domain}`,
                 'Creating webroot directory'
             );
 
             // Extract ZIP file to webroot
             await this.executeCommand(
                 conn,
-                `sudo unzip -o ${remoteZipPath} -d /opt/webroot/${this.domain}`,
+                `sudo unzip -o ${remoteZipPath} -d /home/<adminuser>/webroot/${this.domain}`,
                 'Extracting ZIP file to webroot'
             );
 
@@ -332,7 +332,7 @@ class StaticWebsiteInstaller {
             // Set proper ownership for the domain directory
             await this.executeCommand(
                 conn,
-                `sudo chown -R ${webUser}:${webUser} /opt/webroot/${this.domain}`,
+                `sudo chown -R ${webUser}:${webUser} /home/<adminuser>/webroot/${this.domain}`,
                 `Setting webroot ownership to ${webUser}`
             );
 
@@ -340,21 +340,21 @@ class StaticWebsiteInstaller {
             // 755 is sufficient for both files and directories for nginx to serve content
             await this.executeCommand(
                 conn,
-                `sudo chmod -R 755 /opt/webroot/${this.domain}`,
+                `sudo chmod -R 755 /home/<adminuser>/webroot/${this.domain}`,
                 'Setting webroot permissions for nginx access'
             );
 
             // Verify the webroot setup and file permissions
             await this.executeCommand(
                 conn,
-                `sudo ls -la /opt/webroot/${this.domain}/`,
+                `sudo ls -la /home/<adminuser>/webroot/${this.domain}/`,
                 'Checking webroot directory contents',
                 true
             );
 
             await this.executeCommand(
                 conn,
-                `sudo ls -la /opt/webroot/${this.domain}/index.html 2>/dev/null || echo "Index file not found"`,
+                `sudo ls -la /home/<adminuser>/webroot/${this.domain}/index.html 2>/dev/null || echo "Index file not found"`,
                 'Verifying index file exists',
                 true
             );
@@ -362,7 +362,7 @@ class StaticWebsiteInstaller {
             // Check if nginx can access the directory
             await this.executeCommand(
                 conn,
-                `sudo -u ${webUser} ls /opt/webroot/${this.domain}/index.html 2>/dev/null || echo "Web server user cannot access index file"`,
+                `sudo -u ${webUser} ls /home/<adminuser>/webroot/${this.domain}/index.html 2>/dev/null || echo "Web server user cannot access index file"`,
                 `Testing ${webUser} access to index file`,
                 true
             );
@@ -488,7 +488,7 @@ server {
     listen 80;
     server_name ${this.domain};
 
-    root /opt/webroot/${this.domain};
+    root /home/<adminuser>/webroot/${this.domain};
     index index.html index.htm;${hasSSL ? `
 
     # Redirect all HTTP traffic to HTTPS (except ACME challenges)
@@ -538,7 +538,7 @@ server {
     listen 443 ssl http2;
     server_name ${this.domain};
 
-    root /opt/webroot/${this.domain};
+    root /home/<adminuser>/webroot/${this.domain};
     index index.html index.htm;
 
     # SSL configuration
@@ -669,7 +669,7 @@ EOF`,
 
             this.log('🎉 Static website installation completed successfully!');
             this.log(`📋 Domain: ${this.domain}`);
-            this.log(`📁 Webroot: /opt/webroot/${this.domain}`);
+            this.log(`📁 Webroot: /home/<adminuser>/webroot/${this.domain}`);
             this.log(`⚙️ Nginx config: /etc/nginx/conf.d/${this.domain}.conf`);
             if (hasSSL) {
                 this.log('🔒 SSL: Enabled (HTTPS available)');
@@ -680,7 +680,7 @@ EOF`,
             return {
                 success: true,
                 domain: this.domain,
-                webroot: `/opt/webroot/${this.domain}`,
+                webroot: `/home/<adminuser>/webroot/${this.domain}`,
                 nginxConfig: `/etc/nginx/conf.d/${this.domain}.conf`,
                 hasSSL: hasSSL
             };

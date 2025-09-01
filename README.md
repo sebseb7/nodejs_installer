@@ -27,18 +27,17 @@ A comprehensive SSH-based installer for Debian hosts that provides Node.js, Ngin
 
 ## Prerequisites
 
-- Node.js installed locally (for running this installer)
 - SSH access to target Debian host as "admin" user
 - SSH private key in .pem or .ppk format
-- Target host should have `sudo` configured for the admin user
 
-## Installation
+## System Compatibility
 
-1. Clone or download this project
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+This installer has been tested and verified to work on:
+- **AWS EC2 t3.micro instance** running **Debian 13** (Trixie)
+
+**Important**: When creating your AWS EC2 instance, ensure that **HTTP (port 80)** and **HTTPS (port 443)** access are enabled in the security group. These ports are required for:
+- SSL certificate installation (HTTP-01 ACME challenges)
+- Serving your website over HTTPS
 
 ## Configuration
 
@@ -51,13 +50,7 @@ The GUI application configures everything through the interface:
 
 ## Usage
 
-### GUI Version (Recommended)
-
-Launch the modern graphical interface:
-
-```bash
-npm start
-```
+Launch the application to open the modern graphical interface.
 
 The GUI provides:
 - **IP/Host field**: Enter your server address
@@ -66,22 +59,6 @@ The GUI provides:
 - **Domain field**: Enter the domain name for SSL certificate installation
 - **Email field**: Enter email address for Let's Encrypt account
 - **Install SSL button**: Install SSL certificate with domain verification
-
-### CLI Version (Development)
-
-Run the command-line version for development/testing:
-
-```bash
-npm run cli
-```
-
-Or directly with Node.js:
-
-```bash
-node index.js
-```
-
-**Note**: CLI version requires environment variables to be set. Use the GUI for production use.
 
 ## What it does
 
@@ -99,7 +76,7 @@ The installer provides comprehensive deployment capabilities:
 ### Static Website Deployment (v3.0.0)
 1. **Clean Installation**: Remove existing nginx config and webroot for the domain
 2. **ZIP File Upload**: Securely upload and extract static website files (requires unzip)
-3. **Webroot Creation**: Set up `/opt/webroot/<domain>` with proper permissions
+3. **Webroot Creation**: Set up `/home/<adminuser>/webroot/<domain>` with proper permissions
 4. **Nginx Configuration**: Generate nginx config at `/etc/nginx/conf.d/<domain>.conf`
 5. **SSL Integration**: Automatically enable HTTPS if SSL certificate exists
 6. **Service Reload**: Restart nginx to apply new configuration
