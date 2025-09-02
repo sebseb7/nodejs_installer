@@ -23,8 +23,8 @@
     "sshpk": "^1.18.0"
   },
   "devDependencies": {
-    "electron": "^25.0.0",
-    "electron-builder": "^24.0.0"
+    "electron": "25.9.8",
+    "electron-builder": "24.13.3"
   },
   "build": {
     "appId": "com.debiain.nodejs.installer",
