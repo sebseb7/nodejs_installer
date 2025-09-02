@@ -3,7 +3,7 @@
 const { Client } = require('ssh2');
 const fs = require('fs');
 const path = require('path');
-const argon2 = require('argon2');
+const argon2 = require('argon2-browser');
 
 class VSCodeWebInstaller {
     constructor(progressCallback = null) {
@@ -227,10 +227,14 @@ class VSCodeWebInstaller {
         this.log('🔐 Generating argon2 hashed password...');
 
         try {
-            // Generate argon2 hash for the password
-            const hashedPassword = await argon2.hash(password);
+            // Generate argon2 hash for the password using argon2-browser API
+            const hash = await argon2.hash({
+                pass: password,
+                salt: 'randomsalt' + Math.random().toString(36).substring(2, 15)
+            });
+
             this.log('✅ Password hashed successfully');
-            return hashedPassword;
+            return hash.encoded;
         } catch (error) {
             this.log(`❌ Password hashing failed: ${error.message}`);
             throw error;

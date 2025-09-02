@@ -7,17 +7,11 @@
     "start": "electron .",
     "dev": "electron .",
     "cli": "node index.js",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
-    "dist": "electron-builder --publish=never",
-    "dist:win": "electron-builder --win --publish=never",
-    "dist:mac": "electron-builder --mac --publish=never",
-    "dist:linux": "electron-builder --linux --publish=never"
+    "build": "electron-builder --win",
+    "dist": "electron-builder --win --publish=never"
   },
   "dependencies": {
-    "argon2": "^0.40.1",
+    "argon2-browser": "^1.18.0",
     "ppk-to-openssh": "^3.2.0",
     "ssh2": "^1.15.0",
     "sshpk": "^1.18.0"
@@ -27,10 +21,13 @@
     "electron-builder": "24.13.3"
   },
   "build": {
-    "appId": "com.debiain.nodejs.installer",
+    "appId": "com.debian.nodejs.installer",
     "productName": "Debian Development Stack Installer",
     "directories": {
       "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
     },
     "files": [
       "**/*",
@@ -38,7 +35,11 @@
       "!build/**/*",
       "!*.md",
       "!docs/**/*",
-      "!.env*"
+      "!.env*",
+      "!scripts/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/argon2-browser/**/*"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
@@ -48,16 +49,6 @@
           "arch": [
             "x64",
             "arm64"
-          ]
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
           ]
         }
       ]
