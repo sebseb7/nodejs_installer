@@ -79,17 +79,17 @@ The installer provides comprehensive deployment capabilities:
 6. **Certificate Storage**: Save certificates to `/etc/letsencrypt/live/domain.com/`
 7. **Auto-Renewal**: Certbot automatically handles certificate renewal
 
-### Static Website Deployment (v3.0.0)
+### Static Website Deployment
 1. **Clean Installation**: Remove existing nginx config and webroot for the domain
 2. **ZIP File Upload**: Securely upload and extract static website files (requires unzip)
-3. **Webroot Creation**: Set up `/home/<adminuser>/webroot/<domain>` with proper permissions
+3. **Webroot Creation**: Set up `~/webroot/<domain>` with proper permissions
 4. **Nginx Configuration**: Generate nginx config at `/etc/nginx/conf.d/<domain>.conf`
 5. **SSL Integration**: Automatically enable HTTPS if SSL certificate exists
 6. **Service Reload**: Restart nginx to apply new configuration
 
 **Dependencies**: Requires Nginx and Basic Tools (for unzip functionality)
 
-### VS Code Web Server Installation (v4.0.0)
+### VS Code Web Server Installation
 1. **SSL Verification**: Check that SSL certificate exists for the specified domain
 2. **Code-Server Installation**: Download and install VS Code Server from official repository
 3. **Service Setup**: Enable and start code-server service for the current user

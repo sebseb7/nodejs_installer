@@ -130,19 +130,43 @@ class VSCodeWebInstaller {
         this.log(`🔍 Checking SSL certificate status for ${domain}...`);
 
         try {
-            const sslCheck = await this.executeCommand(
+            // First, check if the certificate files exist
+            const sslFileCheck = await this.executeCommand(
                 conn,
-                `sudo ls /etc/letsencrypt/live/${domain}/fullchain.pem >/dev/null 2>&1 && echo "SSL exists" || echo "SSL not found"`,
-                'Checking SSL certificate status',
+                `sudo test -f /etc/letsencrypt/live/${domain}/fullchain.pem && sudo test -f /etc/letsencrypt/live/${domain}/privkey.pem && echo "SSL files exist" || echo "SSL files missing"`,
+                'Checking SSL certificate files',
                 true
             );
 
-            if (sslCheck.output.includes('SSL exists')) {
+            this.log(`SSL file check result: ${sslFileCheck.output.trim()}`);
+
+            // Also check if nginx can read the files (permissions)
+            const sslAccessCheck = await this.executeCommand(
+                conn,
+                `sudo -u nginx test -r /etc/letsencrypt/live/${domain}/fullchain.pem 2>/dev/null && echo "nginx can read SSL" || echo "nginx cannot read SSL"`,
+                'Checking SSL file permissions for nginx',
+                true
+            );
+
+            this.log(`SSL access check result: ${sslAccessCheck.output.trim()}`);
+
+            if (sslFileCheck.output.includes('SSL files exist')) {
                 this.log(`✅ SSL certificate found for ${domain}`);
                 return { hasSSL: true };
             } else {
-                this.log(`❌ SSL certificate not found for ${domain}`);
+                this.log(`❌ SSL certificate files not found for ${domain}`);
                 this.log('❌ VS Code Web requires SSL certificate to be installed first');
+                this.log(`Expected files: /etc/letsencrypt/live/${domain}/fullchain.pem and privkey.pem`);
+
+                // List what's actually in the letsencrypt directory
+                const listLetsencrypt = await this.executeCommand(
+                    conn,
+                    `sudo ls -la /etc/letsencrypt/live/ 2>/dev/null || echo "letsencrypt directory not found"`,
+                    'Listing letsencrypt certificates',
+                    true
+                );
+                this.log(`Available certificates: ${listLetsencrypt.output.trim()}`);
+
                 return { hasSSL: false };
             }
         } catch (error) {
@@ -256,32 +280,194 @@ EOF`,
         }
     }
 
-    async updateNginxConfig(conn, domain, path) {
-        this.log(`🌐 Updating nginx configuration for ${domain}${path}...`);
+    async createWebrootDirectory(conn) {
+        this.log('📁 Creating webroot directory...');
 
         try {
-            // First, read the existing nginx config to understand its structure
-            const readConfig = await this.executeCommand(
+            // Detect the user's actual home directory
+            const homeDirResult = await this.executeCommand(
                 conn,
-                `sudo cat /etc/nginx/conf.d/${domain}.conf`,
-                'Reading existing nginx configuration',
+                `getent passwd ${this.config.username} | cut -d: -f6`,
+                'Detecting user home directory'
+            );
+
+            const userHomeDir = homeDirResult.output.trim();
+            this.log(`🏠 User home directory: ${userHomeDir}`);
+
+            // Store the detected home directory for use in nginx config
+            this.userHomeDir = userHomeDir;
+
+            // Create the webroot parent directory if it doesn't exist
+            await this.executeCommand(
+                conn,
+                `sudo mkdir -p ${userHomeDir}/webroot`,
+                'Creating webroot parent directory'
+            );
+
+            // Create domain-specific webroot directory
+            await this.executeCommand(
+                conn,
+                `sudo mkdir -p ${userHomeDir}/webroot/${this.domain}`,
+                'Creating domain webroot directory'
+            );
+
+            // Ensure home directory is accessible to nginx
+            const homePerms = await this.executeCommand(
+                conn,
+                `stat -c '%a' ${userHomeDir}`,
+                'Checking home directory permissions'
+            );
+
+            const homePermStr = homePerms.output.trim();
+            const worldPerm = parseInt(homePermStr.charAt(2)); // Last digit = world permissions
+
+            this.log(`🏠 Home directory permissions: ${homePermStr} (world: ${worldPerm})`);
+
+            // Check if world has execute permission (needed for nginx to traverse)
+            // Execute permission = 1 (execute only), 3 (write+execute), 5 (read+execute), 7 (read+write+execute)
+            if (worldPerm !== 1 && worldPerm !== 3 && worldPerm !== 5 && worldPerm !== 7) {
+                this.log('⚠️ Home directory not accessible to nginx, fixing permissions...');
+                await this.executeCommand(
+                    conn,
+                    `sudo chmod o+x ${userHomeDir}`, // Add execute permission for others (nginx)
+                    'Making home directory traversable by nginx'
+                );
+                this.log('✅ Home directory now accessible to nginx');
+            } else {
+                this.log('✅ Home directory already accessible to nginx');
+            }
+
+            // Set proper ownership (user owns files, nginx group for access)
+            await this.executeCommand(
+                conn,
+                `sudo chown -R ${this.config.username}:${this.config.username} ${userHomeDir}/webroot/${this.domain}`,
+                'Setting webroot ownership to user'
+            );
+
+            // Set proper permissions for web serving (755 allows nginx to read)
+            await this.executeCommand(
+                conn,
+                `sudo chmod -R 755 ${userHomeDir}/webroot/${this.domain}`,
+                'Setting webroot permissions for nginx access'
+            );
+
+            // Create a basic index.html file
+            await this.executeCommand(
+                conn,
+                `cat > /tmp/index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${this.domain}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+        h1 { margin-bottom: 20px; }
+        .links {
+            margin-top: 30px;
+        }
+        .links a {
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 2px solid white;
+            border-radius: 5px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        .links a:hover {
+            background: white;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Welcome to ${this.domain}</h1>
+        <p>Your Debian Development Stack is ready!</p>
+        <div class="links">
+            <a href="/code/">📝 VS Code Web</a>
+            <a href="https://github.com/sebseb7/nodejs_installer">📚 Documentation</a>
+        </div>
+        <p><small>Powered by Debian Development Stack Installer v4.0.0</small></p>
+    </div>
+</body>
+</html>
+EOF`,
+                'Creating welcome page'
+            );
+
+            // Move the index.html to the webroot
+            await this.executeCommand(
+                conn,
+                `sudo mv /tmp/index.html ${userHomeDir}/webroot/${this.domain}/index.html`,
+                'Installing welcome page'
+            );
+
+            this.log('✅ Webroot directory created successfully');
+            this.log(`📁 Webroot: ${userHomeDir}/webroot/${this.domain}`);
+            this.log(`🌐 Default page: https://${this.domain}`);
+
+        } catch (error) {
+            this.log(`❌ Webroot directory creation failed: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async updateNginxConfig(conn, domain, path) {
+        this.log(`🌐 Configuring nginx for ${domain}${path}...`);
+
+        try {
+            // Check if nginx config file already exists
+            const configCheck = await this.executeCommand(
+                conn,
+                `sudo test -f /etc/nginx/conf.d/${domain}.conf && echo "exists" || echo "not found"`,
+                'Checking if nginx config exists',
                 true
             );
 
-            if (readConfig.exitCode !== 0) {
-                throw new Error('Could not read existing nginx configuration');
-            }
+            let configContent = '';
 
-            const existingConfig = readConfig.output;
+            if (configCheck.output.includes('exists')) {
+                this.log('📄 Found existing nginx configuration, updating it...');
 
-            // Check if the VS Code Web location block already exists
-            if (existingConfig.includes(`location ${path}/ {`)) {
-                this.log(`⚠️ VS Code Web location block already exists for ${path}`);
-                return true;
-            }
+                // Read existing config
+                const readConfig = await this.executeCommand(
+                    conn,
+                    `sudo cat /etc/nginx/conf.d/${domain}.conf`,
+                    'Reading existing nginx configuration',
+                    true
+                );
 
-            // Add the VS Code Web proxy location block to the HTTPS server section
-            const proxyBlock = `
+                if (readConfig.exitCode !== 0) {
+                    throw new Error('Could not read existing nginx configuration');
+                }
+
+                configContent = readConfig.output;
+
+                // Check if VS Code Web location block already exists
+                if (configContent.includes(`location ${path}/ {`)) {
+                    this.log(`⚠️ VS Code Web location block already exists for ${path}`);
+                    return true;
+                }
+
+                // Add VS Code Web proxy location to existing HTTPS server block
+                const proxyBlock = `
     location ${path}/ {
         proxy_pass  http://127.0.0.1:8080/;
         proxy_http_version 1.1;
@@ -294,35 +480,87 @@ EOF`,
         add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
     }`;
 
-            // Insert the proxy block into the HTTPS server section
-            let updatedConfig = existingConfig;
+                // Find HTTPS server block and insert proxy block
+                const httpsServerPattern = /(server\s*\{[^}]*listen\s+443[^}]*\})/s;
+                if (httpsServerPattern.test(configContent)) {
+                    configContent = configContent.replace(
+                        httpsServerPattern,
+                        (match) => match.replace(/(\s*\}[^}]*$)/, `${proxyBlock}$1`)
+                    );
+                    this.log('✅ Added VS Code Web location to existing HTTPS server block');
+                } else {
+                    throw new Error('Could not find HTTPS server block in existing configuration');
+                }
 
-            // Find the HTTPS server block and add the location before the closing brace
-            const httpsServerMatch = /server \{[^}]*listen 443[^}]*\}/s;
-            if (httpsServerMatch.test(existingConfig)) {
-                // Insert before the last closing brace of the HTTPS server block
-                updatedConfig = existingConfig.replace(
-                    /(server \{[^}]*listen 443[^}]*)(\}[^}]*$)/s,
-                    `$1${proxyBlock}\n    }$2`
-                );
             } else {
-                throw new Error('Could not find HTTPS server block in nginx configuration');
+                this.log('📝 Creating new nginx configuration with VS Code Web support...');
+
+                // Create new nginx config with SSL and VS Code Web support
+                configContent = `# VS Code Web configuration for ${domain}
+server {
+    listen 80;
+    server_name ${domain};
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${domain};
+
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/${domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${domain}/privkey.pem;
+
+    # SSL security settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # VS Code Web proxy location (must come before general location)
+    location ${path}/ {
+        proxy_pass  http://127.0.0.1:8080/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        add_header Strict-Transport-Security "max-age=15552000; includeSubDomains" always;
+    }
+
+    # Serve static files from webroot
+    location / {
+        root ${this.userHomeDir}/webroot/${domain};
+        index index.html index.htm;
+        try_files $uri $uri/ =404;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    }
+}`;
             }
 
-            // Write the updated configuration
+            // Write the configuration
             await this.executeCommand(
                 conn,
-                `cat > /tmp/${domain}-updated.conf << 'EOF'
-${updatedConfig}
+                `cat > /tmp/${domain}-vscode.conf << 'EOF'
+${configContent}
 EOF`,
-                'Creating updated nginx configuration'
+                'Creating nginx configuration'
             );
 
             // Move to nginx directory
             await this.executeCommand(
                 conn,
-                `sudo mv /tmp/${domain}-updated.conf /etc/nginx/conf.d/${domain}.conf`,
-                'Moving updated nginx configuration'
+                `sudo mv /tmp/${domain}-vscode.conf /etc/nginx/conf.d/${domain}.conf`,
+                'Installing nginx configuration'
             );
 
             // Test nginx configuration
@@ -333,6 +571,7 @@ EOF`,
             );
 
             if (testResult.exitCode !== 0) {
+                this.log(`❌ Nginx configuration test failed: ${testResult.errorOutput}`);
                 throw new Error('Nginx configuration test failed');
             }
 
@@ -343,11 +582,11 @@ EOF`,
                 'Reloading nginx configuration'
             );
 
-            this.log('✅ Nginx configuration updated successfully');
+            this.log('✅ Nginx configuration created/updated successfully');
             return true;
 
         } catch (error) {
-            this.log(`❌ Nginx configuration update failed: ${error.message}`);
+            this.log(`❌ Nginx configuration failed: ${error.message}`);
             throw error;
         }
     }
@@ -366,7 +605,10 @@ EOF`,
                 throw new Error('SSL certificate is required for VS Code Web installation');
             }
 
-            // Step 2: Install code-server
+            // Step 2: Create webroot directory
+            await this.createWebrootDirectory(conn);
+
+            // Step 3: Install code-server
             const installResult = await this.installCodeServer(conn);
             if (!installResult) {
                 throw new Error('Code-server installation failed');
@@ -385,7 +627,7 @@ EOF`,
             this.log(`📋 Domain: ${this.domain}`);
             this.log(`📋 Path: ${this.path}`);
             this.log(`🔗 VS Code Web will be available at: https://${this.domain}${this.path}`);
-            this.log(`🔑 Password: ${this.password} (hashed and stored securely)`);
+            this.log(`🔑 Password: [PROTECTED] (hashed and stored securely)`);
 
             return {
                 success: true,

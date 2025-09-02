@@ -329,6 +329,43 @@ function validateForm() {
         }
     }
 
+    // Validate VS Code Web configuration if selected
+    if (elements.installVscodeWeb.checked) {
+        // VS Code Web requires Let's Encrypt SSL
+        if (!elements.installLetsEncrypt.checked) {
+            showAlert('danger', 'VS Code Web requires SSL certificate. Please enable "Let\'s Encrypt SSL".');
+            elements.installLetsEncrypt.focus();
+            return false;
+        }
+
+        if (!elements.vscodeDomain.value.trim()) {
+            showAlert('danger', 'Please enter a domain name for VS Code Web.');
+            elements.vscodeDomain.focus();
+            return false;
+        }
+
+        if (!elements.vscodePassword.value.trim()) {
+            showAlert('danger', 'Please enter a password for VS Code Web.');
+            elements.vscodePassword.focus();
+            return false;
+        }
+
+        // Basic domain validation
+        const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$/;
+        if (!domainRegex.test(elements.vscodeDomain.value.trim())) {
+            showAlert('danger', 'Please enter a valid domain name for VS Code Web.');
+            elements.vscodeDomain.focus();
+            return false;
+        }
+
+        // Password strength validation
+        if (elements.vscodePassword.value.trim().length < 6) {
+            showAlert('danger', 'Password must be at least 6 characters long.');
+            elements.vscodePassword.focus();
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -505,7 +542,14 @@ elements.installLetsEncrypt.addEventListener('change', () => {
         // Auto-enable nginx if Let's Encrypt is selected
         elements.installNginx.checked = true;
     } else {
-        elements.letsEncryptConfig.style.display = 'none';
+        // Don't hide Let's Encrypt config if VS Code Web requires it
+        if (!elements.installVscodeWeb.checked) {
+            elements.letsEncryptConfig.style.display = 'none';
+        } else {
+            showAlert('warning', 'VS Code Web requires SSL certificate. Please keep "Let\'s Encrypt SSL" enabled.');
+            elements.installLetsEncrypt.checked = true;
+            return;
+        }
     }
 });
 
@@ -536,15 +580,26 @@ elements.installVscodeWeb.addEventListener('change', () => {
         // Auto-enable nginx and Let's Encrypt if VS Code Web is selected
         elements.installNginx.checked = true;
         elements.installLetsEncrypt.checked = true;
+        // Show Let's Encrypt config section
+        elements.letsEncryptConfig.style.display = 'block';
+
+        // Auto-fill SSL domain if VS Code Web domain is already entered
+        if (elements.vscodeDomain.value.trim() && !elements.sslDomain.value.trim()) {
+            elements.sslDomain.value = elements.vscodeDomain.value.trim();
+        }
     } else {
         elements.vscodeWebConfig.style.display = 'none';
+        // Don't hide Let's Encrypt config if it's still needed by other features
+        if (!elements.installLetsEncrypt.checked) {
+            elements.letsEncryptConfig.style.display = 'none';
+        }
     }
 });
 
 // Nginx checkbox handler - disable Let's Encrypt, Static Website, and VS Code Web if nginx is unchecked
 elements.installNginx.addEventListener('change', () => {
     if (!elements.installNginx.checked) {
-        if (elements.installLetsEncrypt.checked) {
+        if (elements.installLetsEncrypt.checked && !elements.installVscodeWeb.checked) {
             elements.installLetsEncrypt.checked = false;
             elements.letsEncryptConfig.style.display = 'none';
         }
@@ -553,8 +608,9 @@ elements.installNginx.addEventListener('change', () => {
             elements.staticWebsiteConfig.style.display = 'none';
         }
         if (elements.installVscodeWeb.checked) {
-            elements.installVscodeWeb.checked = false;
-            elements.vscodeWebConfig.style.display = 'none';
+            showAlert('warning', 'VS Code Web requires Nginx. Please keep Nginx enabled.');
+            elements.installNginx.checked = true;
+            return;
         }
     }
 });
@@ -578,6 +634,13 @@ elements.installBasicTools.addEventListener('change', () => {
             elements[field].classList.add('is-invalid');
         }
     });
+});
+
+// Auto-fill SSL domain when VS Code Web domain changes
+elements.vscodeDomain.addEventListener('input', () => {
+    if (elements.installVscodeWeb.checked && elements.vscodeDomain.value.trim() && !elements.sslDomain.value.trim()) {
+        elements.sslDomain.value = elements.vscodeDomain.value.trim();
+    }
 });
 
 // Keyboard shortcuts

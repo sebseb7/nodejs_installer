@@ -485,26 +485,29 @@ ipcMain.handle('install-selected', async (event, config) => {
 
       // 6. Install VS Code Web if selected (requires SSL certificate)
       if (config.installOptions.vscodeWeb) {
-        // Check if SSL certificate exists for the domain
-        const sslExists = results.ssl && results.ssl.hasSSL;
+        event.sender.send('progress-update', '📝 Installing VS Code Web...');
 
-        if (!sslExists) {
-          event.sender.send('progress-update', '❌ VS Code Web requires SSL certificate to be installed first. Skipping VS Code Web setup.');
-        } else {
-          event.sender.send('progress-update', '📝 Installing VS Code Web...');
+        const vscodeWebInstaller = new VSCodeWebInstaller(progressCallback);
+        vscodeWebInstaller.config = connectionConfig;
+        vscodeWebInstaller.setVSCodeConfig(
+          config.vscodeWebConfig.domain,
+          config.vscodeWebConfig.path || '/code',
+          config.vscodeWebConfig.password
+        );
 
-          const vscodeWebInstaller = new VSCodeWebInstaller(progressCallback);
-          vscodeWebInstaller.config = connectionConfig;
-          vscodeWebInstaller.setVSCodeConfig(
-            config.vscodeWebConfig.domain,
-            config.vscodeWebConfig.path || '/code',
-            config.vscodeWebConfig.password
-          );
-          try {
+        try {
+          // Fresh SSL check for VS Code Web (in case SSL was just installed)
+          const freshSSLCheck = await vscodeWebInstaller.checkSSLStatus(conn, config.vscodeWebConfig.domain);
+
+          if (!freshSSLCheck.hasSSL) {
+            event.sender.send('progress-update', '❌ VS Code Web requires SSL certificate. Please ensure SSL is properly installed.');
+            results.vscodeWeb = { success: false, error: 'SSL certificate not found' };
+          } else {
             results.vscodeWeb = await vscodeWebInstaller.installVSCodeWeb(conn);
-          } catch (error) {
-            event.sender.send('progress-update', `❌ VS Code Web installation failed: ${error.message}`);
           }
+        } catch (error) {
+          event.sender.send('progress-update', `❌ VS Code Web installation failed: ${error.message}`);
+          results.vscodeWeb = { success: false, error: error.message };
         }
       }
 
