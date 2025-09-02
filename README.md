@@ -1,5 +1,7 @@
 [![Download Latest Release](https://img.shields.io/badge/Download-v4.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v4.0.0/Debian.Development.Stack.Installer.Setup.4.0.0.exe)
 
+<img src="assets/app-icon.png" alt="Debian Development Stack Installer Icon" width="128" height="128" />
+
 https://youtu.be/gTZRIWz_900
 
 <img width="370" height="599" alt="image" src="https://github.com/user-attachments/assets/cd8803d9-e0bc-4b77-8e57-171e413c94d2" />
@@ -8,7 +10,7 @@ https://youtu.be/gTZRIWz_900
 
 # Debian Development Stack Installer v4.0.0
 
-A comprehensive SSH-based installer for Debian hosts that provides Node.js, Nginx, development tools, SSL certificates, static website deployment, and VS Code Web server with automated configuration.
+A comprehensive SSH-based installer for Debian hosts that provides Node.js, Nginx, development tools, SSL certificates, static website deployment, and VS Code Web server with automated configuration. Includes both GUI and command-line interfaces for maximum flexibility.
 
 ## Features
 
@@ -33,20 +35,31 @@ A comprehensive SSH-based installer for Debian hosts that provides Node.js, Ngin
 - ✅ Comprehensive error handling and logging
 - 🔄 Real-time command execution feedback
 - 🖥️ **GUI Version**: Modern Electron-based interface for all installation tasks
+- 💻 **Command-Line Interface**: Complete CLI support for automation and scripting
+- 🚀 **AWS EC2 Integration**: Create and manage Debian instances with HTTP/HTTPS enabled
 
 ## Prerequisites
 
+### General Requirements
 - SSH access to target Debian host as "admin" user
 - SSH private key in .pem or .ppk format
+
+### CLI-Specific Requirements
+- Node.js installed locally for running CLI commands
+- AWS credentials in `.env` file (for AWS instance creation)
+- Proper SSH key permissions: `chmod 600 your-key.pem`
 
 ## System Compatibility
 
 This installer has been tested and verified to work on:
+- **AWS EC2 t3.small instance** running **Debian 13** (Trixie)
 - **AWS EC2 t3.micro instance** running **Debian 13** (Trixie)
 
 **Important**: When creating your AWS EC2 instance, ensure that **HTTP (port 80)** and **HTTPS (port 443)** access are enabled in the security group. These ports are required for:
 - SSL certificate installation (HTTP-01 ACME challenges)
 - Serving your website over HTTPS
+
+**CLI Usage**: The installer can automatically create properly configured AWS EC2 instances with the correct security group settings when using the CLI.
 
 ## Configuration
 
@@ -136,6 +149,169 @@ The Electron-based GUI provides an intuitive interface with:
 - **Static Website Configuration**: Domain and ZIP file for website deployment
 - **VS Code Web Configuration**: Domain, path, and password for VS Code Server
 - **Action Buttons**: Check status or install selected components
+
+## Command-Line Interface (CLI)
+
+In addition to the GUI, all installers now support comprehensive command-line usage for automation, scripting, and CI/CD integration.
+
+### Master CLI (Recommended)
+
+Use the unified master CLI for the best experience:
+
+```bash
+node installer-cli.js [command] [options]
+```
+
+**Available Commands:**
+- `aws` - AWS EC2 instance creation and cleanup
+- `tools` - Basic development tools installation
+- `node` - Node.js LTS installation
+- `nginx` - Nginx web server installation
+- `ssl` - Let's Encrypt SSL certificate installation
+- `vscode` - VS Code Web server installation
+- `cleanup` - AWS resource cleanup
+
+**Common SSH Options** (used by most commands):
+- `--host, -h HOST` - SSH host/IP address
+- `--username, -u USER` - SSH username (default: "admin")
+- `--key, -k PATH` - Path to SSH private key file
+- `--port, -p PORT` - SSH port (default: 22)
+- `--passphrase PASS` - SSH key passphrase (if required)
+
+### Complete Installation Workflow
+
+```bash
+# 1. Create AWS instance
+node installer-cli.js aws
+
+# 2. Install basic development tools
+node installer-cli.js tools --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+
+# 3. Install Node.js LTS
+node installer-cli.js node --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+
+# 4. Install Nginx web server
+node installer-cli.js nginx --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+
+# 5. Install SSL certificate
+node installer-cli.js ssl --host 18.195.241.96 --username admin --key 18.195.241.96.pem --domain example.com --email admin@example.com
+
+# 6. Install VS Code Web
+node installer-cli.js vscode --host 18.195.241.96 --username admin --key 18.195.241.96.pem --domain example.com --password mySecretPassword
+
+# 7. Clean up when done
+node installer-cli.js cleanup
+```
+
+### Individual Installer CLIs
+
+You can also use individual installers directly:
+
+```bash
+# AWS Instance Management
+node createInstanceScripts/create-aws-instance.js                    # Create instance
+node createInstanceScripts/create-aws-instance.js --cleanup         # Clean up resources
+
+# Development Tools
+node basic-tools-installer.js --host HOST --username USER --key KEY_FILE
+
+# Node.js Installation
+node index.js --host HOST --username USER --key KEY_FILE
+
+# Nginx Installation
+node nginx-installer.js --host HOST --username USER --key KEY_FILE
+
+# SSL Certificate Installation
+node letsencrypt-installer.js --host HOST --username USER --key KEY_FILE --domain DOMAIN --email EMAIL
+
+# VS Code Web Installation
+node vscode-web-installer.js --host HOST --username USER --key KEY_FILE --domain DOMAIN --password PASSWORD
+```
+
+### CLI-Specific Options
+
+**SSL Certificate Installation:**
+- `--domain, -d DOMAIN` - Domain name for SSL certificate
+- `--email, -e EMAIL` - Email address for Let's Encrypt notifications
+
+**VS Code Web Installation:**
+- `--domain, -d DOMAIN` - Domain name (must have SSL certificate)
+- `--password, --pwd PASSWORD` - Password for VS Code Web access
+- `--path PATH` - URL path for VS Code Web (default: /code)
+
+**AWS Resource Cleanup:**
+- `--instance ID` - Clean up specific EC2 instance
+- `--keypair NAME` - Clean up specific SSH keypair
+- `--security-group ID` - Clean up specific security group
+- `--yes, -y` - Skip confirmation prompts
+
+### CLI Prerequisites
+
+**SSH Access:**
+- SSH access to target Debian host as "admin" user
+- SSH private key in .pem format
+- Proper key permissions: `chmod 600 your-key.pem`
+
+**AWS Instance Creation:**
+- AWS credentials configured in `.env` file
+- IAM user with EC2 permissions (see `ec2-minimal-policy.json`)
+
+**SSL Certificate Installation:**
+- Domain name pointing to server IP
+- Port 80 accessible (for HTTP-01 ACME challenges)
+- Nginx installed and running (installer will check and attempt to start if needed)
+
+**VS Code Web Installation:**
+- SSL certificate installed for the domain
+- Nginx installed and running
+
+### CLI Help System
+
+```bash
+# Master CLI help
+node installer-cli.js --help
+node installer-cli.js help
+
+# Individual installer help
+node installer-cli.js aws         # AWS instance help
+node installer-cli.js tools       # Basic tools help
+node installer-cli.js node        # Node.js help
+node installer-cli.js nginx       # Nginx help
+node installer-cli.js ssl         # SSL certificate help
+node installer-cli.js vscode      # VS Code help
+node installer-cli.js cleanup     # Cleanup help
+
+# Direct help for any installer
+node [installer-file].js --help
+```
+
+### CLI Examples
+
+**Basic Development Setup:**
+```bash
+# Create instance and install basic stack
+node installer-cli.js aws
+node installer-cli.js tools --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+node installer-cli.js node --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+node installer-cli.js nginx --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+```
+
+**Full Web Development Stack:**
+```bash
+# Install everything including SSL and VS Code Web
+node installer-cli.js ssl --host 18.195.241.96 --username admin --key 18.195.241.96.pem --domain example.com --email admin@example.com
+node installer-cli.js vscode --host 18.195.241.96 --username admin --key 18.195.241.96.pem --domain example.com --password securePassword
+```
+
+**Resource Management:**
+```bash
+# Clean up specific resources
+node installer-cli.js cleanup --instance i-1234567890abcdef0 --yes
+node installer-cli.js cleanup --keypair debian-trixie-2025-09-02T07-25-12 --yes
+
+# Clean up everything
+node installer-cli.js cleanup
+```
 
 ## Security Notes
 

@@ -11,7 +11,10 @@
     "dist": "electron-builder --win --publish=never"
   },
   "dependencies": {
+    "@aws-sdk/client-ec2": "^3.490.0",
+    "argon2": "^0.40.1",
     "argon2-browser": "^1.18.0",
+    "dotenv": "^16.3.1",
     "ppk-to-openssh": "^3.2.0",
     "ssh2": "^1.15.0",
     "sshpk": "^1.18.0"
@@ -23,6 +26,7 @@
   "build": {
     "appId": "com.debian.nodejs.installer",
     "productName": "Debian Development Stack Installer",
+    "icon": "assets/app-icon.png",
     "directories": {
       "output": "dist"
     },

@@ -269,9 +269,103 @@ class BasicToolsInstaller {
     }
 }
 
+// Parse command line arguments
+function parseArgs() {
+    const args = process.argv.slice(2);
+    const config = {};
+
+    for (let i = 0; i < args.length; i++) {
+        switch (args[i]) {
+            case '--host':
+            case '-h':
+                config.host = args[++i];
+                break;
+            case '--username':
+            case '-u':
+                config.username = args[++i];
+                break;
+            case '--key':
+            case '-k':
+                config.privateKeyPath = args[++i];
+                break;
+            case '--port':
+            case '-p':
+                config.port = parseInt(args[++i]) || 22;
+                break;
+            case '--passphrase':
+                config.passphrase = args[++i];
+                break;
+            case '--help':
+                showHelp();
+                process.exit(0);
+        }
+    }
+
+    return config;
+}
+
+function showHelp() {
+    console.log(`
+Basic Tools Installer - Command Line Interface
+
+USAGE:
+  node basic-tools-installer.js [OPTIONS]
+
+REQUIRED OPTIONS:
+  --host, -h HOST          SSH host/IP address
+  --username, -u USER      SSH username (usually 'admin' for Debian)
+  --key, -k PATH           Path to SSH private key file
+
+OPTIONAL:
+  --port, -p PORT          SSH port (default: 22)
+  --passphrase PASS        SSH key passphrase (if required)
+  --help                   Show this help
+
+EXAMPLES:
+  # Basic usage
+  node basic-tools-installer.js --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+
+  # With custom port
+  node basic-tools-installer.js -h 18.195.241.96 -u admin -k ./my-key.pem -p 2222
+
+  # With passphrase
+  node basic-tools-installer.js --host ec2-instance.com --username debian --key ./key.pem --passphrase mypassword
+
+TOOLS INSTALLED:
+  - git: Version control system
+  - htop: Interactive process viewer
+  - ripgrep: Fast text search tool
+  - build-essential: Development tools (gcc, make, etc.)
+  - curl: Data transfer tool
+  - wget: File download tool
+  - vim: Text editor
+  - mc: Midnight Commander file manager
+  - unzip: Archive extraction tool
+
+NOTES:
+  - Ensure your SSH key has proper permissions (chmod 600 key.pem)
+  - Make sure the target host is accessible and running Debian/Ubuntu
+  - The script will update package lists and install missing tools
+`);
+}
+
 // Run the installer if this file is executed directly
 if (require.main === module) {
+    const config = parseArgs();
+
+    if (Object.keys(config).length === 0) {
+        console.error('❌ No configuration provided!');
+        console.error('Use --help for usage instructions.');
+        process.exit(1);
+    }
+
+    // Set default values
+    config.port = config.port || 22;
+    config.username = config.username || 'admin';
+
     const installer = new BasicToolsInstaller();
+    installer.config = config;
+
     installer.run().catch(console.error);
 }
 

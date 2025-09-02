@@ -538,9 +538,120 @@ class NginxInstaller {
     }
 }
 
+// Parse command line arguments
+function parseArgs() {
+    const args = process.argv.slice(2);
+    const config = {};
+
+    for (let i = 0; i < args.length; i++) {
+        switch (args[i]) {
+            case '--host':
+            case '-h':
+                config.host = args[++i];
+                break;
+            case '--username':
+            case '-u':
+                config.username = args[++i];
+                break;
+            case '--key':
+            case '-k':
+                config.privateKeyPath = args[++i];
+                break;
+            case '--port':
+            case '-p':
+                config.port = parseInt(args[++i]) || 22;
+                break;
+            case '--passphrase':
+                config.passphrase = args[++i];
+                break;
+            case '--help':
+                showHelp();
+                process.exit(0);
+        }
+    }
+
+    return config;
+}
+
+function showHelp() {
+    console.log(`
+Nginx Web Server Installer - Command Line Interface
+
+USAGE:
+  node nginx-installer.js [OPTIONS]
+
+REQUIRED OPTIONS:
+  --host, -h HOST          SSH host/IP address
+  --username, -u USER      SSH username (usually 'admin' for Debian)
+  --key, -k PATH           Path to SSH private key file
+
+OPTIONAL:
+  --port, -p PORT          SSH port (default: 22)
+  --passphrase PASS        SSH key passphrase (if required)
+  --help                   Show this help
+
+EXAMPLES:
+  # Basic usage
+  node nginx-installer.js --host 18.195.241.96 --username admin --key 18.195.241.96.pem
+
+  # Short form
+  node nginx-installer.js -h 18.195.241.96 -u admin -k ./my-key.pem
+
+  # With custom SSH port
+  node nginx-installer.js --host ec2-instance.com --username debian --key ./key.pem --port 2222
+
+PREREQUISITES:
+  - SSH access to target Debian/Ubuntu server
+  - Basic tools installed (recommended)
+
+WHAT IT INSTALLS:
+  - Nginx web server
+  - Essential nginx modules
+  - Basic security configuration
+  - Service auto-start configuration
+  - Default site configuration
+
+SECURITY FEATURES:
+  - Secure default configuration
+  - Hidden nginx version
+  - Disabled server tokens
+  - Basic firewall rules
+  - Secure file permissions
+
+NOTES:
+  - Ensure SSH key has proper permissions (chmod 600 key.pem)
+  - The script will configure nginx for production use
+  - SSL certificates can be added later with letsencrypt-installer
+`);
+}
+
 // Run the installer if this file is executed directly
 if (require.main === module) {
+    const config = parseArgs();
+
+    if (Object.keys(config).length === 0) {
+        console.error('❌ No configuration provided!');
+        console.error('Use --help for usage instructions.');
+        process.exit(1);
+    }
+
+    // Check required parameters
+    const required = ['host', 'username', 'privateKeyPath'];
+    const missing = required.filter(key => !config[key]);
+
+    if (missing.length > 0) {
+        console.error(`❌ Missing required parameters: ${missing.join(', ')}`);
+        console.error('Use --help for usage instructions.');
+        process.exit(1);
+    }
+
+    // Set defaults
+    config.port = config.port || 22;
+    config.username = config.username || 'admin';
+
     const installer = new NginxInstaller();
+    installer.config = config;
+
     installer.run().catch(console.error);
 }
 

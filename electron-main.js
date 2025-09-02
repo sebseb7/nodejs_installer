@@ -63,8 +63,9 @@ async function convertKeyFile(filePath, passphrase = null) {
 // Create the browser window
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 600,
-    height: 700,
+    width: 1280,
+    height: 720,
+    icon: path.join(__dirname, 'assets/icon.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
