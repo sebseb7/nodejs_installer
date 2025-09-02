@@ -1,6 +1,8 @@
 [![Download Latest Release](https://img.shields.io/badge/Download-v4.0.0-blue?style=for-the-badge&logo=github)](https://github.com/sebseb7/nodejs_installer/releases/download/v4.0.0/Debian.Development.Stack.Installer.Setup.4.0.0.exe)
 
-<img width="395" height="900" alt="image" src="https://github.com/user-attachments/assets/3e385d9b-b710-4a4a-b587-884aea7fe70c" />
+
+<img width="370" height="599" alt="image" src="https://github.com/user-attachments/assets/cd8803d9-e0bc-4b77-8e57-171e413c94d2" />
+
 
 
 # Debian Development Stack Installer v4.0.0
