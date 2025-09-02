@@ -222,6 +222,72 @@ class VSCodeWebInstaller {
         }
     }
 
+    async installGit(conn) {
+        this.log('🔧 Installing git for VS Code development workflow...');
+
+        try {
+            // Check if git is already installed
+            const gitCheckResult = await this.executeCommand(
+                conn,
+                'git --version',
+                'Checking if git is already installed',
+                true
+            );
+
+            if (gitCheckResult.exitCode === 0) {
+                this.log('✅ Git is already installed');
+                this.log(`📋 Git version: ${gitCheckResult.output.trim()}`);
+                return true;
+            }
+
+            // Install git if not present
+            this.log('🔄 Git not found, installing...');
+            
+            // Update package list
+            await this.executeCommand(
+                conn,
+                'sudo apt update',
+                'Updating package list for git installation'
+            );
+
+            // Install git
+            await this.executeCommand(
+                conn,
+                'sudo apt install -y git',
+                'Installing git package'
+            );
+
+            // Verify git installation
+            const verifyResult = await this.executeCommand(
+                conn,
+                'git --version',
+                'Verifying git installation',
+                true
+            );
+
+            if (verifyResult.exitCode === 0) {
+                this.log('✅ Git installed successfully');
+                this.log(`📋 Git version: ${verifyResult.output.trim()}`);
+                
+                // Configure git with basic settings for the user
+                await this.executeCommand(
+                    conn,
+                    'git config --global init.defaultBranch main',
+                    'Setting git default branch to main'
+                );
+                
+                this.log('✅ Git configured for VS Code development workflow');
+                return true;
+            } else {
+                throw new Error('Git installation verification failed');
+            }
+
+        } catch (error) {
+            this.log(`❌ Git installation failed: ${error.message}`);
+            throw error;
+        }
+    }
+
     async installCodeServer(conn) {
         this.log('🚀 Installing VS Code Web (code-server)...');
 
@@ -691,22 +757,25 @@ EOF`,
                 throw new Error('SSL certificate is required for VS Code Web installation');
             }
 
-            // Step 2: Create webroot directory
+            // Step 2: Install git if not present (required for VS Code development workflow)
+            await this.installGit(conn);
+
+            // Step 3: Create webroot directory
             await this.createWebrootDirectory(conn);
 
-            // Step 3: Install code-server
+            // Step 4: Install code-server
             const installResult = await this.installCodeServer(conn);
             if (!installResult) {
                 throw new Error('Code-server installation failed');
             }
 
-            // Step 3: Generate hashed password
+            // Step 5: Generate hashed password
             const hashedPassword = await this.generateHashedPassword(this.password);
 
-            // Step 4: Create code-server configuration
+            // Step 6: Create code-server configuration
             await this.createCodeServerConfig(conn, hashedPassword);
 
-            // Step 5: Update nginx configuration
+            // Step 7: Update nginx configuration
             await this.updateNginxConfig(conn, this.domain, this.path);
 
             this.log('🎉 VS Code Web installation completed successfully!');
@@ -836,6 +905,7 @@ PREREQUISITES:
 
 WHAT IT INSTALLS:
   - VS Code Web (code-server) - Web-based Visual Studio Code
+  - Git (automatically installed if not present) - Required for development workflow
   - Nginx proxy configuration for SSL termination
   - Password protection with Argon2 hashing
   - Webroot directory structure

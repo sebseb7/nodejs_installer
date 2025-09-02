@@ -107,15 +107,17 @@ The installer provides comprehensive deployment capabilities:
 
 ### VS Code Web Server Installation
 1. **SSL Verification**: Check that SSL certificate exists for the specified domain
-2. **Code-Server Installation**: Download and install VS Code Server from official repository
-3. **Service Setup**: Enable and start code-server service for the current user
-4. **Password Security**: Generate argon2 hash for the provided password
-5. **Configuration**: Create code-server config with secure settings
-6. **Nginx Proxy**: Add reverse proxy location block to nginx configuration
-7. **WebSocket Support**: Configure proper WebSocket proxy headers for VS Code
-8. **SSL Integration**: Ensure all traffic goes through HTTPS
+2. **Git Installation**: Automatically install git if not already present (required for VS Code development workflow)
+3. **Code-Server Installation**: Download and install VS Code Server from official repository
+4. **Service Setup**: Enable and start code-server service for the current user
+5. **Password Security**: Generate argon2 hash for the provided password
+6. **Configuration**: Create code-server config with secure settings
+7. **Nginx Proxy**: Add reverse proxy location block to nginx configuration
+8. **WebSocket Support**: Configure proper WebSocket proxy headers for VS Code
+9. **SSL Integration**: Ensure all traffic goes through HTTPS
 
 **Dependencies**: Requires Nginx and Let's Encrypt SSL certificate for the domain
+**Git Integration**: Git is automatically installed and configured for seamless version control within VS Code Web
 **Access**: Available at `https://yourdomain.com/code` (or custom path) with password authentication
 
 ### Development Stack Installation
@@ -238,6 +240,7 @@ node vscode-web-installer.js --host HOST --username USER --key KEY_FILE --domain
 - `--domain, -d DOMAIN` - Domain name (must have SSL certificate)
 - `--password, --pwd PASSWORD` - Password for VS Code Web access
 - `--path PATH` - URL path for VS Code Web (default: /code)
+- **Note**: Git is automatically installed and configured for development workflow
 
 **AWS Resource Cleanup:**
 - `--instance ID` - Clean up specific EC2 instance
@@ -264,6 +267,7 @@ node vscode-web-installer.js --host HOST --username USER --key KEY_FILE --domain
 **VS Code Web Installation:**
 - SSL certificate installed for the domain
 - Nginx installed and running
+- Git will be automatically installed if not present
 
 ### CLI Help System
 

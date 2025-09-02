@@ -218,6 +218,10 @@ PREREQUISITES:
 - SSL certificate installed for domain
 - Nginx installed and running
 
+WHAT IT INSTALLS:
+- VS Code Web (code-server) with nginx proxy
+- Git (automatically installed if not present) for development workflow
+
 ACCESS AFTER INSTALLATION:
 - URL: https://your-domain.com/code
 - Password: The password you specified
